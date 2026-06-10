@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Open Marketing Workflow Builder</title>
+    <link rel="stylesheet" href="/src/styles/workflow-builder.css" />
+    <link rel="stylesheet" href="/examples/vanilla/demo.css" />
+  </head>
+  <body>
+    <header class="demo-header">
+      <h1>Workflow Builder</h1>
+      <div class="demo-actions">
+        <button id="btn-export">Export JSON</button>
+        <button id="btn-import">Import JSON</button>
+        <button id="btn-validate">Validate</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+    </header>
+    <main class="demo-main">
+      <div id="workflow-builder"></div>
+      <aside id="demo-output">
+        <h3>Workflow JSON</h3>
+        <pre id="output-json"></pre>
+      </aside>
+    </main>
+    <script type="module" src="/examples/vanilla/main.js"></script>
+  </body>
+</html>

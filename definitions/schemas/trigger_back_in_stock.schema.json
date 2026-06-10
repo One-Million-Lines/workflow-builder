@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "Back in stock",
+  "fields": [
+    {
+      "name": "_info",
+      "type": "info",
+      "text": "Reach users when out-of-stock products they interacted with become available again."
+    },
+    { "name": "activity_days", "label": "Users who interacted in the last X days", "type": "number", "default": 30, "min": 1 },
+    {
+      "name": "product_filters",
+      "label": "Only include products with these filters",
+      "type": "json",
+      "placeholder": "{ \"category\": \"shoes\" }"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "title": "SMS",
+  "fields": [
+    { "name": "sender", "label": "Sender", "type": "text" },
+    { "name": "message", "label": "Message", "type": "textarea", "required": true }
+  ]
+}

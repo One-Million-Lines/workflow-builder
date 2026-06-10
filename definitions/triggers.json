@@ -1,0 +1,39 @@
+{
+  "triggers": [
+    {
+      "type": "user_events",
+      "label": "User events",
+      "icon": "activity",
+      "description": "Trigger when a user performs a specific event",
+      "config_schema": "schemas/trigger_user_events.schema.json"
+    },
+    {
+      "type": "api_request",
+      "label": "API request",
+      "icon": "code",
+      "description": "Trigger from an API call",
+      "config_schema": "schemas/trigger_api_request.schema.json"
+    },
+    {
+      "type": "user_segment",
+      "label": "User segment",
+      "icon": "users",
+      "description": "Trigger when a user enters a segment",
+      "config_schema": "schemas/trigger_user_segment.schema.json"
+    },
+    {
+      "type": "back_in_stock",
+      "label": "Back in Stock",
+      "icon": "package",
+      "description": "Trigger when a product is back in stock",
+      "config_schema": "schemas/trigger_back_in_stock.schema.json"
+    },
+    {
+      "type": "price_change",
+      "label": "Price Change",
+      "icon": "tag",
+      "description": "Trigger when a product price changes",
+      "config_schema": "schemas/trigger_price_change.schema.json"
+    }
+  ]
+}

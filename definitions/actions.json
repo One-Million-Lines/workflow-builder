@@ -1,0 +1,19 @@
+{
+  "actions": [
+    {
+      "type": "update_list_status",
+      "label": "Update list status",
+      "description": "Update subscriber list status"
+    },
+    {
+      "type": "add_tag",
+      "label": "Add tag",
+      "description": "Add a tag to the user"
+    },
+    {
+      "type": "remove_tag",
+      "label": "Remove tag",
+      "description": "Remove a tag from the user"
+    }
+  ]
+}

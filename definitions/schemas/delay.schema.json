@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "title": "Delay",
+  "fields": [
+    {
+      "name": "mode",
+      "label": "Wait time before going to next step",
+      "type": "select",
+      "default": "value",
+      "options": [
+        { "label": "Immediately", "value": "now" },
+        { "label": "Insert value", "value": "value" },
+        { "label": "Expression", "value": "expression" }
+      ]
+    },
+    {
+      "name": "value",
+      "label": "Waiting time",
+      "type": "number",
+      "default": 1,
+      "min": 0,
+      "visible_if": { "field": "mode", "equals": "value" }
+    },
+    {
+      "name": "unit",
+      "label": "Unit",
+      "type": "select",
+      "default": "hours",
+      "options": [
+        { "label": "Minutes", "value": "minutes" },
+        { "label": "Hours", "value": "hours" },
+        { "label": "Days", "value": "days" },
+        { "label": "Weeks", "value": "weeks" }
+      ],
+      "visible_if": { "field": "mode", "equals": "value" }
+    },
+    {
+      "name": "expression",
+      "label": "Insert expression",
+      "type": "text",
+      "placeholder": "next Tuesday at 12:13",
+      "visible_if": { "field": "mode", "equals": "expression" }
+    },
+    {
+      "name": "_help",
+      "type": "info",
+      "text": "Expression formats:\n  next [weekday] at [HH:MM]\n  next week on [weekday] at [HH:MM]\n  after [N] days\n  after [N] days at [HH:MM]",
+      "visible_if": { "field": "mode", "equals": "expression" }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "type": "object",
+  "title": "Action",
+  "fields": [
+    {
+      "name": "action_type",
+      "label": "Select action",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "label": "Update user attribute", "value": "update_attribute" },
+        { "label": "Add user tag", "value": "add_tag" },
+        { "label": "Remove user tag", "value": "remove_tag" },
+        { "label": "Update list status", "value": "update_list_status" }
+      ]
+    },
+    {
+      "name": "attributes",
+      "label": "Attributes to update",
+      "type": "repeater",
+      "add_label": "Add attribute",
+      "visible_if": { "field": "action_type", "equals": "update_attribute" },
+      "item_fields": [
+        {
+          "name": "field",
+          "label": "Attribute",
+          "type": "select",
+          "required": true,
+          "placeholder": "Choose attribute",
+          "options_source": "attributes"
+        },
+        { "name": "value", "label": "Value", "type": "text" }
+      ]
+    },
+    {
+      "name": "tag_name",
+      "label": "Tags (comma-separated)",
+      "type": "text",
+      "placeholder": "tag1, tag2",
+      "visible_if": { "field": "action_type", "in": ["add_tag", "remove_tag"] }
+    },
+    {
+      "name": "list_id",
+      "label": "List",
+      "type": "select",
+      "options_source": "lists",
+      "placeholder": "Select a list",
+      "visible_if": { "field": "action_type", "equals": "update_list_status" }
+    },
+    {
+      "name": "list_status",
+      "label": "New status",
+      "type": "select",
+      "options_source": "list_statuses",
+      "depends_on": ["list_id"],
+      "placeholder": "Select a status",
+      "visible_if": { "field": "action_type", "equals": "update_list_status" }
+    }
+  ]
+}

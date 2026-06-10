@@ -1,0 +1,76 @@
+{
+  "type": "object",
+  "title": "HTTP request",
+  "fields": [
+    { "name": "_info", "type": "info", "text": "Make an HTTP request using data from the trigger. Use {{trigger.field}} or {{customer.field}} placeholders." },
+    {
+      "name": "method",
+      "label": "Method",
+      "type": "select",
+      "required": true,
+      "default": "GET",
+      "options": [
+        { "label": "GET", "value": "GET" },
+        { "label": "POST", "value": "POST" }
+      ]
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "type": "text",
+      "required": true,
+      "placeholder": "https://api.example.com/users/{{customer.id}}"
+    },
+    {
+      "name": "query",
+      "label": "Query string parameters",
+      "type": "http_kv",
+      "add_label": "Add parameter"
+    },
+    {
+      "name": "headers",
+      "label": "Headers",
+      "type": "http_kv",
+      "add_label": "Add header"
+    },
+    {
+      "name": "body_mode",
+      "label": "Request body",
+      "type": "select",
+      "default": "none",
+      "visible_if": { "field": "method", "equals": "POST" },
+      "options": [
+        { "label": "None", "value": "none" },
+        { "label": "JSON", "value": "json" },
+        { "label": "Raw / form-encoded", "value": "raw" }
+      ]
+    },
+    {
+      "name": "body_json",
+      "label": "JSON body (supports {{trigger.field}} placeholders)",
+      "type": "textarea",
+      "rows": 6,
+      "placeholder": "{\n  \"user_id\": \"{{customer.id}}\",\n  \"event\": \"{{trigger.event}}\"\n}",
+      "visible_if": { "field": "body_mode", "equals": "json" }
+    },
+    {
+      "name": "body_raw",
+      "label": "Raw body",
+      "type": "textarea",
+      "rows": 6,
+      "visible_if": { "field": "body_mode", "equals": "raw" }
+    },
+    {
+      "name": "save_response_as",
+      "label": "Save response as variable",
+      "type": "text",
+      "placeholder": "http_response"
+    },
+    {
+      "name": "fail_on_error",
+      "label": "Stop workflow if request fails",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

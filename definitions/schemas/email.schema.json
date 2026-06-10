@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "Email",
+  "fields": [
+    {
+      "name": "template",
+      "label": "Email template",
+      "type": "email_template",
+      "required": true
+    },
+    {
+      "name": "template_id",
+      "label": "Saved template ID (optional)",
+      "type": "text",
+      "placeholder": "tmpl_xxx"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "title": "API request",
+  "fields": [
+    {
+      "name": "_info_endpoint",
+      "type": "info",
+      "text": "Trigger this workflow with an API request. The endpoint name is your reference for invoking it."
+    },
+    { "name": "endpoint", "label": "Endpoint name", "type": "text", "required": true, "placeholder": "my_workflow_endpoint" },
+    {
+      "name": "_info_example",
+      "type": "info",
+      "text": "Example payload:\n{\n  \"campaign_id\": \"<workflow_id>\",\n  \"recipients\": [{ \"email\": \"user@example.com\" }]\n}"
+    },
+    { "name": "_divider_exit", "type": "divider", "label": "Exit triggers" },
+    {
+      "name": "exit_events",
+      "label": "Events that stop the workflow",
+      "type": "repeater",
+      "max_items": 3,
+      "add_label": "Add exit event",
+      "item_fields": [
+        { "name": "event", "label": "Event name", "type": "text", "required": true },
+        { "name": "conditions", "label": "Conditions", "type": "repeater",
+          "item_fields": [
+            { "name": "field", "label": "Field", "type": "text", "required": true },
+            { "name": "operator", "label": "Operator", "type": "text", "default": "equals" },
+            { "name": "value", "label": "Value", "type": "text" }
+          ]
+        }
+      ]
+    }
+  ]
+}

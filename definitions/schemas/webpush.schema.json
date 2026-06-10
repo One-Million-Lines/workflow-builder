@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "title": "Web Push",
+  "fields": [
+    { "name": "title", "label": "Title", "type": "text", "required": true },
+    { "name": "message", "label": "Message", "type": "textarea", "required": true },
+    { "name": "url", "label": "Click URL", "type": "text" },
+    { "name": "image_url", "label": "Image URL", "type": "text" }
+  ]
+}

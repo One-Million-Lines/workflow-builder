@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "title": "Events",
+  "fields": [
+    {
+      "name": "events",
+      "label": "Trigger events",
+      "type": "repeater",
+      "min_items": 1,
+      "max_items": 3,
+      "add_label": "Add event",
+      "item_label": "Event",
+      "item_fields": [
+        {
+          "name": "event",
+          "label": "Event name",
+          "type": "select",
+          "required": true,
+          "options_source": "events",
+          "placeholder": "Choose event"
+        },
+        {
+          "name": "conditions",
+          "label": "Conditions",
+          "type": "repeater",
+          "add_label": "Add condition",
+          "item_fields": [
+            {
+              "name": "field",
+              "label": "Field",
+              "type": "select",
+              "required": true,
+              "options_source": "event_fields",
+              "depends_on": ["event"],
+              "placeholder": "Choose field"
+            },
+            {
+              "name": "operator", "label": "Operator", "type": "select", "default": "equals",
+              "options": [
+                { "label": "equals", "value": "equals" },
+                { "label": "not equals", "value": "not_equals" },
+                { "label": "contains", "value": "contains" },
+                { "label": "greater than", "value": "greater_than" },
+                { "label": "less than", "value": "less_than" }
+              ]
+            },
+            { "name": "value", "label": "Value", "type": "text" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "event_series",
+      "label": "What happens with multiple trigger events during automation time?",
+      "type": "select",
+      "default": "removeAfter",
+      "options": [
+        { "label": "Ignore subsequent events (keep first)", "value": "removeAfter" },
+        { "label": "Restart workflow on every event", "value": "removeBefore" }
+      ]
+    },
+    { "name": "_divider_exit", "type": "divider", "label": "Exit triggers" },
+    {
+      "name": "exit_events",
+      "label": "Events that stop the workflow",
+      "type": "repeater",
+      "max_items": 3,
+      "add_label": "Add exit event",
+      "item_fields": [
+        {
+          "name": "event", "label": "Event name", "type": "select", "required": true,
+          "options_source": "events", "placeholder": "Choose event"
+        },
+        {
+          "name": "conditions",
+          "label": "Conditions",
+          "type": "repeater",
+          "add_label": "Add condition",
+          "item_fields": [
+            {
+              "name": "field", "label": "Field", "type": "select", "required": true,
+              "options_source": "event_fields", "depends_on": ["event"]
+            },
+            { "name": "operator", "label": "Operator", "type": "text", "default": "equals" },
+            { "name": "value", "label": "Value", "type": "text" }
+          ]
+        }
+      ]
+    }
+  ]
+}

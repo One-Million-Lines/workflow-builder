@@ -1,0 +1,125 @@
+{
+  "type": "object",
+  "title": "Yes / No condition",
+  "fields": [
+    {
+      "name": "condition_type",
+      "label": "Create a condition based on",
+      "type": "select",
+      "required": true,
+      "default": "user_attributes",
+      "options": [
+        { "label": "User attributes", "value": "user_attributes" },
+        { "label": "Random number", "value": "random" },
+        { "label": "User activity", "value": "user_activity" },
+        { "label": "User workflow status", "value": "workflow_status" }
+      ]
+    },
+
+    {
+      "name": "userconditions",
+      "label": "Conditions",
+      "type": "repeater",
+      "min_items": 1,
+      "add_label": "Add condition",
+      "visible_if": { "field": "condition_type", "equals": "user_attributes" },
+      "item_fields": [
+        { "name": "field", "label": "Attribute", "type": "text", "required": true, "placeholder": "customer.country" },
+        {
+          "name": "operator", "label": "Operator", "type": "select", "default": "equals",
+          "options": [
+            { "label": "equals", "value": "equals" },
+            { "label": "not equals", "value": "not_equals" },
+            { "label": "contains", "value": "contains" },
+            { "label": "not contains", "value": "not_contains" },
+            { "label": "greater than", "value": "greater_than" },
+            { "label": "less than", "value": "less_than" },
+            { "label": "exists", "value": "exists" },
+            { "label": "not exists", "value": "not_exists" }
+          ]
+        },
+        { "name": "value", "label": "Value", "type": "text" }
+      ]
+    },
+
+    {
+      "name": "_random_info", "type": "info",
+      "text": "Randomly assigns users to YES or NO based on the percentages below (must sum to 100).",
+      "visible_if": { "field": "condition_type", "equals": "random" }
+    },
+    {
+      "name": "random_yes", "label": "YES %", "type": "number", "default": 50, "min": 1, "max": 99,
+      "visible_if": { "field": "condition_type", "equals": "random" }
+    },
+    {
+      "name": "random_no", "label": "NO % (auto-computed)", "type": "number", "default": 50, "min": 1, "max": 99,
+      "visible_if": { "field": "condition_type", "equals": "random" },
+      "computed_from": { "field": "random_yes", "formula": "100-x" }
+    },
+
+    {
+      "name": "activity_count", "label": "User", "type": "select", "default": "did",
+      "visible_if": { "field": "condition_type", "equals": "user_activity" },
+      "options": [
+        { "label": "Did", "value": "did" },
+        { "label": "Did NOT", "value": "didnot" }
+      ]
+    },
+    {
+      "name": "activity_since", "label": "Since", "type": "select", "default": "begin",
+      "visible_if": { "field": "condition_type", "equals": "user_activity" },
+      "options": [
+        { "label": "Entering workflow", "value": "begin" },
+        { "label": "Previous step", "value": "step" }
+      ]
+    },
+    {
+      "name": "activity_list", "label": "Events", "type": "repeater",
+      "min_items": 1,
+      "add_label": "Add event",
+      "visible_if": { "field": "condition_type", "equals": "user_activity" },
+      "item_fields": [
+        { "name": "event", "label": "Event name", "type": "text", "required": true },
+        { "name": "conditions", "label": "Conditions", "type": "repeater",
+          "item_fields": [
+            { "name": "field", "label": "Field", "type": "text", "required": true },
+            { "name": "operator", "label": "Operator", "type": "text", "default": "equals" },
+            { "name": "value", "label": "Value", "type": "text" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "_activity_warning", "type": "info",
+      "text": "Conditions are checked immediately. Add a delay step to wait for events.",
+      "visible_if": { "field": "condition_type", "equals": "user_activity" }
+    },
+
+    {
+      "name": "what_workflow", "label": "Workflow", "type": "select", "default": "other",
+      "visible_if": { "field": "condition_type", "equals": "workflow_status" },
+      "options": [
+        { "label": "This workflow", "value": "current" },
+        { "label": "Other workflow", "value": "other" }
+      ]
+    },
+    {
+      "name": "workflow_ids", "label": "Workflow IDs (comma-separated)", "type": "text",
+      "visible_if": { "field": "what_workflow", "equals": "other" }
+    },
+    {
+      "name": "workflow_is", "label": "User status", "type": "select", "default": "isnow",
+      "visible_if": { "field": "condition_type", "equals": "workflow_status" },
+      "options": [
+        { "label": "Currently in", "value": "isnow" },
+        { "label": "Currently not in", "value": "isnot" },
+        { "label": "Was in the last days", "value": "isdays" },
+        { "label": "Was not in the last days", "value": "isnotdays" }
+      ]
+    },
+    {
+      "name": "workflow_days", "label": "Last X days", "type": "number", "default": 7, "min": 1,
+      "visible_if": { "field": "workflow_is", "in": ["isdays", "isnotdays"] }
+    }
+  ]
+}

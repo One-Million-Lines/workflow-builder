@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "title": "User segment",
+  "fields": [
+    {
+      "name": "segment_id",
+      "label": "Segment",
+      "type": "select",
+      "required": true,
+      "options_source": "segments",
+      "placeholder": "Choose segment"
+    },
+    { "name": "repeat_flag", "label": "Trigger campaign repetitively", "type": "toggle", "default": false },
+    {
+      "name": "recurring",
+      "label": "Recurring schedule (cron expression)",
+      "type": "text",
+      "placeholder": "0 9 * * *",
+      "visible_if": { "field": "repeat_flag", "equals": true }
+    }
+  ]
+}
