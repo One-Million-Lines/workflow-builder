@@ -1,4 +1,4 @@
-// Type declarations for @openmarketing/workflow-builder
+// Type declarations for @one-million-lines/workflow-builder
 // Hand-written to describe the public API of the (JavaScript) source.
 
 export type Json =

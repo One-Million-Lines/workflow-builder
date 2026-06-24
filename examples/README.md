@@ -34,7 +34,7 @@ npm install /absolute/path/to/workflow-builder
 | `angular/`  | Angular          | `workflow-builder.component.ts`    |
 
 The `react`, `vue`, `angular`, and `plain` examples import from the package name
-`@openmarketing/workflow-builder` (or the built `dist/` file) — the realistic
+`@one-million-lines/workflow-builder` (or the built `dist/` file) — the realistic
 consumer path. The `vanilla` example imports from `../../src` and exists for
 in-repo development of the builder itself.
 
@@ -43,7 +43,7 @@ in-repo development of the builder itself.
 Every integration must load the stylesheet once:
 
 ```js
-import "@openmarketing/workflow-builder/styles.css";
+import "@one-million-lines/workflow-builder/styles.css";
 ```
 
 or via a `<link>` / bundler config in non-ESM setups.

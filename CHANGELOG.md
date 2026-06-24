@@ -10,7 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 - npm library build (`dist/workflow-builder.js` ESM, `dist/workflow-builder.cjs` CommonJS).
 - Bundled default registry definitions (`defaultDefinitions`) so the builder works
   with no JSON hosting required.
-- Shipped stylesheet at `dist/styles.css`, imported via `@openmarketing/workflow-builder/styles.css`.
+- Shipped stylesheet at `dist/styles.css`, imported via `@one-million-lines/workflow-builder/styles.css`.
 - Hand-written TypeScript declarations (`dist/index.d.ts`).
 - `exports` map, `files` allowlist, and publishing metadata in `package.json`.
 

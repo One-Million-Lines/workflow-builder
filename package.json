@@ -1,5 +1,5 @@
 {
-  "name": "@openmarketing/workflow-builder",
+  "name": "@one-million-lines/workflow-builder",
   "version": "0.1.0",
   "description": "Framework-agnostic JavaScript visual marketing-automation workflow builder. Embeds anywhere, exports workflow JSON.",
   "type": "module",
@@ -12,6 +12,9 @@
   },
   "bugs": {
     "url": "https://github.com/one-million-lines/workflow-builder/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "workflow",

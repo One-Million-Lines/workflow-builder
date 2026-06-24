@@ -1,8 +1,8 @@
-// Angular wrapper for @openmarketing/workflow-builder.
+// Angular wrapper for @one-million-lines/workflow-builder.
 // The package is framework-agnostic; this component wraps the neutral factory.
 //
 // Remember to add the stylesheet to your angular.json "styles" array:
-//   "node_modules/@openmarketing/workflow-builder/dist/styles.css"
+//   "node_modules/@one-million-lines/workflow-builder/dist/styles.css"
 import {
   Component,
   ElementRef,
@@ -13,7 +13,7 @@ import {
   Output,
   ViewChild,
 } from "@angular/core";
-import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
+import { createWorkflowBuilder } from "@one-million-lines/workflow-builder";
 
 @Component({
   selector: "wfb-workflow-builder",

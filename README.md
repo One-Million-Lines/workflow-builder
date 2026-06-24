@@ -60,18 +60,18 @@ examples/
 ## Install
 
 ```bash
-npm install @openmarketing/workflow-builder
+npm install @one-million-lines/workflow-builder
 ```
 
-> **MANUAL ACTION REQUIRED:** `@openmarketing/workflow-builder` is a placeholder
+> **MANUAL ACTION REQUIRED:** `@one-million-lines/workflow-builder` is a placeholder
 > package name. Choose/reserve your own npm name (and scope/org) before publishing
 > and update `package.json` `name`, `repository`, `homepage`, and `bugs`.
 
 Import the component factory and the stylesheet:
 
 ```js
-import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
-import "@openmarketing/workflow-builder/styles.css";
+import { createWorkflowBuilder } from "@one-million-lines/workflow-builder";
+import "@one-million-lines/workflow-builder/styles.css";
 
 const builder = createWorkflowBuilder({
   target: document.getElementById("builder"),
@@ -123,7 +123,7 @@ This project does not require environment variables.
 Class-based setup (full control):
 
 ```js
-import { WorkflowBuilder } from "@openmarketing/workflow-builder";
+import { WorkflowBuilder } from "@one-million-lines/workflow-builder";
 
 const builder = new WorkflowBuilder({
   container: "#workflow-builder",

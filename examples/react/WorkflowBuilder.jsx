@@ -1,11 +1,11 @@
-// React wrapper for @openmarketing/workflow-builder.
+// React wrapper for @one-million-lines/workflow-builder.
 //
 // The package is framework-agnostic, so React integration is a thin wrapper
 // around the framework-neutral factory. React/ReactDOM are NOT dependencies of
 // the package — this file lives in the consuming app.
 import { useEffect, useRef } from "react";
-import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
-import "@openmarketing/workflow-builder/styles.css";
+import { createWorkflowBuilder } from "@one-million-lines/workflow-builder";
+import "@one-million-lines/workflow-builder/styles.css";
 
 export function WorkflowBuilder({ initialValue, extensions, dataProvider, onChange }) {
   const hostRef = useRef(null);

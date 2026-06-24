@@ -1,5 +1,5 @@
 <!--
-  Vue 3 wrapper for @openmarketing/workflow-builder.
+  Vue 3 wrapper for @one-million-lines/workflow-builder.
   The package is framework-agnostic; this SFC wraps the neutral factory.
 -->
 <template>
@@ -8,8 +8,8 @@
 
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from "vue";
-import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
-import "@openmarketing/workflow-builder/styles.css";
+import { createWorkflowBuilder } from "@one-million-lines/workflow-builder";
+import "@one-million-lines/workflow-builder/styles.css";
 
 const props = defineProps({
   initialValue: { type: Object, default: null },
