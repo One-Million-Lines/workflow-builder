@@ -57,6 +57,54 @@ examples/
   vanilla/           working browser example
 ```
 
+## Install
+
+```bash
+npm install @openmarketing/workflow-builder
+```
+
+> **MANUAL ACTION REQUIRED:** `@openmarketing/workflow-builder` is a placeholder
+> package name. Choose/reserve your own npm name (and scope/org) before publishing
+> and update `package.json` `name`, `repository`, `homepage`, and `bugs`.
+
+Import the component factory and the stylesheet:
+
+```js
+import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
+import "@openmarketing/workflow-builder/styles.css";
+
+const builder = createWorkflowBuilder({
+  target: document.getElementById("builder"),
+  initialValue: workflow,            // optional
+  onChange: (value) => console.log(value),
+});
+
+await builder.ready;                  // mounting is async
+// builder.getValue(); builder.validate(); builder.destroy();
+```
+
+Registry definitions are **bundled** — the builder works with zero hosting. You
+can still override them by passing `registries` (inline objects or URLs).
+
+### Framework integration
+
+The package is framework-agnostic. Thin wrappers for each framework live in
+[`examples/`](./examples):
+
+- **React** — `examples/react/WorkflowBuilder.jsx`
+- **Vue 3** — `examples/vue/WorkflowBuilder.vue`
+- **Angular** — `examples/angular/workflow-builder.component.ts`
+- **Plain JS** — `examples/plain/index.html`
+
+The neutral lifecycle API is: `mount()`, `update(value)`, `getValue()`,
+`setValue(value)`, `validate()`, `destroy()`.
+
+### Server-side rendering
+
+The package does not touch `window`/`document` at import time, so it is safe to
+import in SSR frameworks. Mounting is client-only — create the builder inside an
+effect/`onMounted`, or dynamically import with `ssr: false` in Next.js.
+
 ## Getting started
 
 ```bash
@@ -72,7 +120,7 @@ Open `http://localhost:5317`.
 
 This project does not require environment variables.
 
-Typical builder setup:
+Class-based setup (full control):
 
 ```js
 import { WorkflowBuilder } from "@openmarketing/workflow-builder";
@@ -80,11 +128,7 @@ import { WorkflowBuilder } from "@openmarketing/workflow-builder";
 const builder = new WorkflowBuilder({
   container: "#workflow-builder",
   workflow: initialWorkflow,
-  registries: {
-    steps: "/definitions/steps.json",
-    triggers: "/definitions/triggers.json",
-    actions: "/definitions/actions.json",
-  },
+  // registries is optional — bundled definitions are used by default.
   onChange: (workflow) => console.log(workflow),
   onSave: (workflow) => console.log("save", workflow),
 });
@@ -121,12 +165,30 @@ The demo in `examples/vanilla/` also shows how to register an extension that add
 ## Development
 
 ```bash
-npm run dev
-npm run build
-npm run preview
+npm run dev          # demo app
+npm run build        # build the library into dist/ (ESM + CJS + CSS + d.ts)
+npm test             # package-consumption tests (jsdom)
+npm run validate:pack # build + npm pack --dry-run
+npm run preview      # preview the demo build
 ```
 
-There is currently no dedicated lint or automated test command in the repository.
+## Building & publishing
+
+```bash
+npm run build              # produces dist/
+npm pack --dry-run         # inspect the tarball contents
+npm pack                   # create the .tgz to test in a consumer app
+```
+
+To publish (run manually):
+
+```bash
+# MANUAL ACTION REQUIRED — choose a real package name first, then:
+npm login
+npm publish --access public
+```
+
+`prepublishOnly` rebuilds the library automatically before publish.
 
 ## Roadmap
 

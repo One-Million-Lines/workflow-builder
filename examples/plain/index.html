@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workflow Builder — plain JavaScript</title>
+    <!-- Ship the package stylesheet. With a bundler use:
+         import "@openmarketing/workflow-builder/styles.css"; -->
+    <link
+      rel="stylesheet"
+      href="../../node_modules/@openmarketing/workflow-builder/dist/styles.css"
+    />
+    <style>
+      html, body { margin: 0; height: 100%; }
+      #builder { height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="builder"></div>
+    <script type="module">
+      // With a bundler:
+      //   import { createWorkflowBuilder } from "@openmarketing/workflow-builder";
+      import { createWorkflowBuilder } from "../../dist/workflow-builder.js";
+
+      const builder = createWorkflowBuilder({
+        target: document.getElementById("builder"),
+        initialValue: {
+          trigger: { type: "user_segment", config: { segment_id: "seg_new" } },
+          steps: [],
+        },
+        onChange(value) {
+          console.log("workflow changed", value);
+        },
+      });
+
+      await builder.ready;
+      console.log("current value", builder.getValue());
+      // builder.destroy(); // when done
+    </script>
+  </body>
+</html>

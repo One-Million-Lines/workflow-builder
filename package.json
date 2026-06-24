@@ -1,16 +1,68 @@
 {
   "name": "@openmarketing/workflow-builder",
-  "private": true,
   "version": "0.1.0",
+  "description": "Framework-agnostic JavaScript visual marketing-automation workflow builder. Embeds anywhere, exports workflow JSON.",
   "type": "module",
-  "description": "Framework-agnostic JavaScript visual marketing automation workflow builder.",
-  "main": "src/index.js",
+  "license": "MIT",
+  "author": "Alex Rada (https://linkedin.com/in/alexrada)",
+  "homepage": "https://github.com/one-million-lines/workflow-builder#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/one-million-lines/workflow-builder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/one-million-lines/workflow-builder/issues"
+  },
+  "keywords": [
+    "workflow",
+    "workflow-builder",
+    "automation",
+    "marketing-automation",
+    "visual-editor",
+    "no-code",
+    "flow",
+    "canvas",
+    "framework-agnostic",
+    "vanilla-js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/workflow-builder.cjs",
+  "module": "./dist/workflow-builder.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/workflow-builder.js",
+      "require": "./dist/workflow-builder.cjs"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./definitions/*": "./definitions/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "definitions",
+    "types",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite build --config vite.lib.config.js",
+    "build:demo": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build",
+    "validate:pack": "npm run build && npm pack --dry-run"
   },
   "devDependencies": {
+    "jsdom": "^25.0.1",
     "vite": "^5.4.10"
   }
 }

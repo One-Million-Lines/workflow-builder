@@ -9,13 +9,14 @@ import { Sidebar } from "../ui/Sidebar.js";
 import { renderForm } from "../forms/FormRenderer.js";
 import { createDefaultDataProvider } from "../services/MockBackend.js";
 import { EmailTemplateBuilder } from "../extensions/email/EmailTemplateBuilder.js";
+import { defaultDefinitions } from "../definitions/index.js";
 
 export class WorkflowBuilder extends EventEmitter {
   constructor({ container, workflow, registries, extensions, dataProvider, modules, onChange, onSave }) {
     super();
     this._containerSel = container;
     this._initialWorkflow = workflow || null;
-    this._registriesSrc = registries;
+    this._registriesSrc = registries || defaultDefinitions;
     this._extensions = Array.isArray(extensions) ? [...extensions] : [];
     this._dataProvider = dataProvider || createDefaultDataProvider();
     this._modules = { ...(modules || {}) };

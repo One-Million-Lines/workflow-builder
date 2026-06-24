@@ -46,18 +46,23 @@ export async function buildRegistries(registries, extensions = []) {
 
   const stepSchemas = {};
   for (const s of stepsRes.data.steps) {
-    if (s.config_schema) stepSchemas[s.type] = await loader.loadSchema(s.config_schema, stepsRes.baseUrl);
+    if (s.schema) stepSchemas[s.type] = s.schema;
+    else if (s.config_schema) stepSchemas[s.type] = await loader.loadSchema(s.config_schema, stepsRes.baseUrl);
   }
   const triggerSchemas = {};
   for (const t of triggersRes.data.triggers) {
-    if (t.config_schema) triggerSchemas[t.type] = await loader.loadSchema(t.config_schema, triggersRes.baseUrl);
+    if (t.schema) triggerSchemas[t.type] = t.schema;
+    else if (t.config_schema) triggerSchemas[t.type] = await loader.loadSchema(t.config_schema, triggersRes.baseUrl);
   }
 
-  // Shared "step-level conditions" schema (optional, falls back to inline definition)
-  let conditionsSchema = null;
-  try {
-    conditionsSchema = await loader.loadSchema("schemas/_conditions.schema.json", stepsRes.baseUrl);
-  } catch { /* optional */ }
+  // Shared "step-level conditions" schema. Prefer an inlined schema (bundled
+  // definitions), then fall back to fetching it relative to the steps source.
+  let conditionsSchema = stepsRes.data._conditionsSchema || null;
+  if (!conditionsSchema) {
+    try {
+      conditionsSchema = await loader.loadSchema("schemas/_conditions.schema.json", stepsRes.baseUrl);
+    } catch { /* optional */ }
+  }
 
   const stepReg    = new StepRegistry(stepsRes.data.steps, stepSchemas);
   const triggerReg = new TriggerRegistry(triggersRes.data.triggers, triggerSchemas);
