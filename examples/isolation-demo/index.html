@@ -1,0 +1,262 @@
+<!doctype html>
+<!--
+  CSS Isolation Demo — @one-million-lines/workflow-builder
+  =========================================================
+  This page simulates a host application that:
+    - Uses its own global resets (body, *, h1-h6, button, input, a)
+    - Has conflicting class names (flex, hidden, border, rounded)
+    - Declares CSS custom properties on :root
+  The workflow builder should render correctly and not affect
+  the host styles outside its container.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS Isolation Demo — Workflow Builder</title>
+
+    <!-- ── HOST APP STYLES (conflicting) ────────────────────────────────── -->
+    <style>
+      /* Intentionally aggressive host reset */
+      *, *::before, *::after { box-sizing: content-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 16px;
+        color: #330000;
+        background: #fff9f0;
+      }
+
+      /* Host custom properties — must NOT be overridden by the builder */
+      :root {
+        --primary: hotpink;
+        --radius: 0px;
+        --shadow: none;
+        --bg: #fff9f0;
+        --text: #330000;
+      }
+
+      /* Host generic classes that could clash with builder class names */
+      .flex   { display: inline !important; }
+      .hidden { visibility: visible !important; }
+      .border { border: 4px solid hotpink !important; }
+      .rounded { border-radius: 0 !important; }
+      .gap-2  { gap: 0 !important; }
+
+      /* Host heading / form styles that must not bleed into the builder */
+      h1, h2, h3, h4 { font-family: Impact, sans-serif; color: hotpink; }
+      button {
+        font-family: Impact, sans-serif;
+        background: hotpink;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        border-radius: 0;
+      }
+      input, select, textarea {
+        font-family: Georgia, serif;
+        border: 3px solid hotpink;
+        border-radius: 0;
+        background: #ffe0f0;
+      }
+      a { color: hotpink; text-decoration: underline wavy; }
+
+      /* ── HOST LAYOUT ─────────────────────────────────────────────────── */
+      .host-app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      .host-header {
+        background: #1a1a2e;
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+      }
+      .host-header h1 {
+        font-family: sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+        margin: 0;
+      }
+      .host-badge {
+        font-family: monospace;
+        font-size: 11px;
+        background: #ff3b6b;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+      .host-body {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        flex: 1;
+        overflow: hidden;
+      }
+      .host-sidebar {
+        background: #f5f0eb;
+        border-right: 2px solid hotpink;
+        padding: 16px;
+        overflow-y: auto;
+      }
+      .host-sidebar h2 {
+        font-size: 13px;
+        margin: 0 0 12px;
+      }
+      .host-sidebar p {
+        font-size: 12px;
+        color: #663300;
+        line-height: 1.5;
+        margin-bottom: 8px;
+      }
+      .host-sidebar .host-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 6px;
+        font-size: 12px;
+      }
+      .host-main {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .host-main-header {
+        background: white;
+        border-bottom: 2px solid hotpink;
+        padding: 8px 16px;
+        font-size: 12px;
+        color: #663300;
+        flex-shrink: 0;
+      }
+      /* Builder container — the builder fills this */
+      #workflow-builder {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        /* isolation: isolate; — uncomment if host z-index conflicts arise */
+      }
+      .results-panel {
+        background: #1a1a2e;
+        color: #e5e7eb;
+        padding: 12px 16px;
+        font-family: monospace;
+        font-size: 11px;
+        max-height: 160px;
+        overflow-y: auto;
+        border-top: 2px solid hotpink;
+        flex-shrink: 0;
+      }
+      .results-panel h3 {
+        font-family: monospace;
+        font-size: 11px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 6px;
+      }
+      #output-json {
+        white-space: pre-wrap;
+        margin: 0;
+        font-size: 10px;
+        line-height: 1.5;
+        color: #a3e635;
+      }
+    </style>
+
+    <!-- ── WORKFLOW BUILDER STYLESHEET ──────────────────────────────────── -->
+    <!--
+      In a real app: import "@one-million-lines/workflow-builder/styles.css";
+      Here we point directly at the source file for the dev demo.
+    -->
+    <link rel="stylesheet" href="/src/styles/workflow-builder.css" />
+  </head>
+  <body>
+    <div class="host-app">
+      <!-- Host header (styled with host/conflicting styles) -->
+      <header class="host-header">
+        <h1>🏠 Fake Host App <span class="host-badge">v3.5.0 Bootstrap + Custom CSS</span></h1>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="exportWorkflow()" style="font-family:sans-serif;background:#3b82f6;border-radius:4px;padding:5px 12px;font-size:12px;">Export JSON</button>
+          <button onclick="validateWorkflow()" style="font-family:sans-serif;background:#10b981;border-radius:4px;padding:5px 12px;font-size:12px;">Validate</button>
+          <button onclick="resetWorkflow()" style="font-family:sans-serif;background:#6b7280;border-radius:4px;padding:5px 12px;font-size:12px;">Reset</button>
+        </div>
+      </header>
+
+      <div class="host-body">
+        <!-- Host sidebar with conflicting styles -->
+        <aside class="host-sidebar">
+          <h2>Host Sidebar</h2>
+          <p>This sidebar uses the host app's styles: <strong>Georgia serif</strong>, pink borders, and conflicting CSS classes.</p>
+          <p>The workflow builder embedded to the right should look completely unaffected by these host styles.</p>
+          <hr style="border-color:hotpink;margin:12px 0;" />
+          <p><strong>What to verify:</strong></p>
+          <ul style="font-size:11px;color:#663300;padding-left:16px;">
+            <li>Builder uses its own clean sans-serif font</li>
+            <li>Builder buttons are styled normally, not pink</li>
+            <li>Builder inputs have standard border/bg</li>
+            <li>The <code>--primary</code>, <code>--radius</code> host variables don't affect the builder</li>
+            <li>The <code>.flex</code>, <code>.border</code>, <code>.hidden</code> host overrides don't break builder layout</li>
+          </ul>
+          <hr style="border-color:hotpink;margin:12px 0;" />
+          <h2>Host form</h2>
+          <p>These form elements use host styles and should be unaffected by the builder:</p>
+          <input type="text" placeholder="Host input (pink border)" style="width:100%;margin-bottom:6px;" />
+          <select style="width:100%;margin-bottom:6px;">
+            <option>Host select</option>
+          </select>
+          <button class="host-btn">Host button (pink)</button>
+        </aside>
+
+        <div class="host-main">
+          <div class="host-main-header">
+            ⬇ Workflow Builder embedded below — all styles must remain isolated to the builder root
+          </div>
+
+          <!-- THE EMBEDDED BUILDER -->
+          <div id="workflow-builder"></div>
+
+          <!-- Host results panel -->
+          <div class="results-panel">
+            <h3>Workflow JSON output</h3>
+            <pre id="output-json">← click Export JSON above</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { createWorkflowBuilder } from "/src/index.js";
+
+      const builder = createWorkflowBuilder({
+        target: document.getElementById("workflow-builder"),
+        onChange(value) {
+          // No-op for demo
+        },
+      });
+
+      await builder.ready;
+      window.__wfBuilder = builder;
+
+      window.exportWorkflow = () => {
+        document.getElementById("output-json").textContent =
+          JSON.stringify(builder.getValue(), null, 2);
+      };
+      window.validateWorkflow = () => {
+        const r = builder.validate();
+        alert(`Valid: ${r.valid}\nErrors: ${r.errors.length}\nWarnings: ${r.warnings.length}`);
+      };
+      window.resetWorkflow = () => {
+        if (confirm("Reset the workflow?")) builder.setValue(null);
+      };
+    </script>
+  </body>
+</html>

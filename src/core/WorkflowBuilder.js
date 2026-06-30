@@ -44,9 +44,10 @@ export class WorkflowBuilder extends EventEmitter {
     this._state = new WorkflowState(this._initialWorkflow);
     this._validator = new WorkflowValidator(this._reg.steps, this._reg.triggers);
 
-    // Build DOM shell
+    // Build DOM shell — both classes are added so consumers can scope overrides
+    // via either the legacy `.wfb-root` selector or the namespaced `.oml-workflow-builder`.
     this._root = document.createElement("div");
-    this._root.className = "wfb-root";
+    this._root.className = "wfb-root oml-workflow-builder";
 
     this._canvas = new Canvas({
       stepRegistry: this._reg.steps,

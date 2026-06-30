@@ -63,9 +63,10 @@ examples/
 npm install @one-million-lines/workflow-builder
 ```
 
-> **MANUAL ACTION REQUIRED:** `@one-million-lines/workflow-builder` is a placeholder
-> package name. Choose/reserve your own npm name (and scope/org) before publishing
-> and update `package.json` `name`, `repository`, `homepage`, and `bugs`.
+> **MANUAL ACTION REQUIRED:** This package is configured to publish under the
+> `@one-million-lines` npm scope. Before publishing, confirm you own/have publish
+> access to that npm organization and that `@one-million-lines/workflow-builder`
+> is available (or already yours). `publishConfig.access` is set to `public`.
 
 Import the component factory and the stylesheet:
 
@@ -104,6 +105,46 @@ The neutral lifecycle API is: `mount()`, `update(value)`, `getValue()`,
 The package does not touch `window`/`document` at import time, so it is safe to
 import in SSR frameworks. Mounting is client-only — create the builder inside an
 effect/`onMounted`, or dynamically import with `ssr: false` in Next.js.
+
+### Styling & isolation
+
+The stylesheet at `@one-million-lines/workflow-builder/styles.css` is fully
+self-contained and does **not** affect the host application:
+
+- All `--wfb-*` CSS custom properties are scoped to the builder root element and
+  never declared on `:root`, so they cannot bleed into host styles.
+- There are no global resets (no `body`, `html`, or `*` rules).
+- The builder root carries two classes: `wfb-root` and `oml-workflow-builder`.
+  You can use either for scoped overrides in your own CSS.
+- `box-sizing: border-box` is set on `.wfb-root` and inherited by all
+  descendants, so the layout is not affected by host-level `box-sizing` changes.
+
+**Hosting the builder:**
+
+Give the container element explicit dimensions; the builder fills `100%` of its
+container:
+
+```html
+<div id="builder" style="height: 600px; width: 100%; position: relative;"></div>
+```
+
+**Overriding design tokens:**
+
+Override the builder's look by setting `--wfb-*` variables on its container:
+
+```css
+#builder {
+  --wfb-primary: #7c3aed;   /* purple brand color */
+  --wfb-radius: 6px;
+}
+```
+
+**z-index**
+
+The add-step popover uses `z-index: 100` and the sidebar uses `z-index: 50`,
+both relative to the builder root (which uses `position: relative`). If your host
+creates a stacking context with a high `z-index`, wrap the builder in a container
+with `isolation: isolate` to keep builder layers separate from host layers.
 
 ## Getting started
 
@@ -183,7 +224,7 @@ npm pack                   # create the .tgz to test in a consumer app
 To publish (run manually):
 
 ```bash
-# MANUAL ACTION REQUIRED — choose a real package name first, then:
+# MANUAL ACTION REQUIRED — log in to an account with publish access to the @one-million-lines scope, then:
 npm login
 npm publish --access public
 ```

@@ -1,6 +1,6 @@
 {
   "name": "@one-million-lines/workflow-builder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic JavaScript visual marketing-automation workflow builder. Embeds anywhere, exports workflow JSON.",
   "type": "module",
   "license": "MIT",

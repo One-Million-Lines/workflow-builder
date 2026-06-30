@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-06-30
+
 ### Added
 - npm library build (`dist/workflow-builder.js` ESM, `dist/workflow-builder.cjs` CommonJS).
 - Bundled default registry definitions (`defaultDefinitions`) so the builder works
@@ -13,6 +15,15 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 - Shipped stylesheet at `dist/styles.css`, imported via `@one-million-lines/workflow-builder/styles.css`.
 - Hand-written TypeScript declarations (`dist/index.d.ts`).
 - `exports` map, `files` allowlist, and publishing metadata in `package.json`.
+
+### Fixed
+- **CSS isolation**: moved all `--wfb-*` CSS custom properties from `:root` to
+  `.wfb-root` so they are fully scoped and never leak into the host application.
+- Added `.oml-workflow-builder` as a secondary root class (the root element now
+  carries both `wfb-root` and `oml-workflow-builder`) so consumers can target the
+  builder via the canonical namespaced selector.
+- Added scoped `box-sizing: border-box` reset for all descendants of `.wfb-root`
+  so the builder layout is unaffected by host-level `box-sizing` overrides.
 
 ## [0.1.0]
 
