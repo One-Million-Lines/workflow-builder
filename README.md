@@ -225,6 +225,10 @@ To publish (run manually):
 
 ```bash
 # MANUAL ACTION REQUIRED — log in to an account with publish access to the @one-million-lines scope, then:
+npm version patch   # 0.1.3 -> 0.1.4, bugfix
+npm version minor   # 0.1.3 -> 0.2.0, new feature
+npm version major   # 0.1.3 -> 1.0.0, breaking change
+
 npm login
 npm publish --access public
 ```

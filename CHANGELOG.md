@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-07-02
+
+### Changed
+- **Dependencies upgraded to latest releases** (no public API changes):
+- **Dev dependencies upgraded to latest releases**:
+- `engines.node` bumped to `>=22` in line with supported LTS range.
+
 ## [0.1.1] — 2026-06-30
 
 ### Added
