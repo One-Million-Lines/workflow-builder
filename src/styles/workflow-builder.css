@@ -18,24 +18,93 @@
   --wfb-radius: 10px;
   --wfb-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
   --wfb-shadow-lg: 0 4px 12px rgba(16, 24, 40, 0.1);
+  /* Spacing tokens — overridable via theme dict */
+  --wfb-canvas-padding: 32px 16px 80px;
+  --wfb-node-padding: 12px 14px;
+  --wfb-sidebar-width: 380px;
+  --wfb-sidebar-padding: 16px;
 
   /* Layout */
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 500px;
+  /* Isolation: anchor font metrics so host-page font-size doesn't scale our px values */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--wfb-text);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  -webkit-font-smoothing: antialiased;
   display: flex;
   /* Reset: ensure box-sizing and text defaults do not inherit host overrides */
   box-sizing: border-box;
 }
+
+/* ── Embedded isolation reset ─────────────────────────────────────────────── */
+/* Prevents host-app CSS from bleeding into the builder regardless of context. */
 
 .wfb-root *,
 .wfb-root ::before,
 .wfb-root ::after {
   box-sizing: inherit;
 }
+
+/* Headings: host CSS often changes font-size/margin on h1–h6 */
+.wfb-root h1, .wfb-root h2, .wfb-root h3,
+.wfb-root h4, .wfb-root h5, .wfb-root h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* Buttons: host frameworks (Bootstrap, Tailwind, etc.) frequently restyle these */
+.wfb-root button {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  line-height: inherit;
+  text-align: left;
+  box-shadow: none;
+  outline: none;
+}
+
+/* Form controls */
+.wfb-root input,
+.wfb-root select,
+.wfb-root textarea {
+  -webkit-appearance: none;
+  appearance: none;
+  background: white;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  outline: none;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+/* Misc block elements that may carry host margins */
+.wfb-root p  { margin: 0; padding: 0; }
+.wfb-root ul, .wfb-root ol { list-style: none; margin: 0; padding: 0; }
+.wfb-root a  { color: inherit; text-decoration: none; }
+.wfb-root label { font-weight: inherit; margin: 0; }
 
 /* ---------- Canvas ---------- */
 .wfb-canvas {
@@ -48,7 +117,7 @@
 }
 .wfb-canvas__scroll {
   min-height: 100%;
-  padding: 32px 16px 80px;
+  padding: var(--wfb-canvas-padding);
   display: flex;
   justify-content: center;
 }
@@ -69,7 +138,7 @@
   border: 1px solid var(--wfb-node-border);
   border-radius: var(--wfb-radius);
   box-shadow: var(--wfb-shadow);
-  padding: 12px 14px;
+  padding: var(--wfb-node-padding);
   width: 280px;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.05s;
@@ -244,7 +313,7 @@
 .wfb-sidebar {
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: 380px;
+  width: var(--wfb-sidebar-width);
   background: white;
   border-left: 1px solid var(--wfb-node-border);
   box-shadow: var(--wfb-shadow-lg);
@@ -265,7 +334,7 @@
   background: transparent; border: none; cursor: pointer;
   color: var(--wfb-muted); padding: 4px;
 }
-.wfb-sidebar__body { flex: 1; overflow-y: auto; padding: 16px; }
+.wfb-sidebar__body { flex: 1; overflow-y: auto; padding: var(--wfb-sidebar-padding); }
 .wfb-sidebar__footer {
   display: flex; justify-content: flex-end; gap: 8px;
   padding: 12px 16px;

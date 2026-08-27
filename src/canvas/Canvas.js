@@ -1,5 +1,6 @@
 import { renderTriggerNode, renderStepNode } from "./NodeRenderer.js";
 import { icon } from "../ui/Icon.js";
+import { defaultT } from "../i18n/index.js";
 
 /**
  * Canvas renders the entire workflow tree vertically with branches.
@@ -12,9 +13,10 @@ import { icon } from "../ui/Icon.js";
  *   - "wfb:select-trigger" detail: {}
  */
 export class Canvas {
-  constructor({ stepRegistry, triggerRegistry }) {
+  constructor({ stepRegistry, triggerRegistry, t = defaultT }) {
     this.stepRegistry = stepRegistry;
     this.triggerRegistry = triggerRegistry;
+    this._t = t;
     this.el = document.createElement("div");
     this.el.className = "wfb-canvas";
     this._scroll = document.createElement("div");
@@ -37,6 +39,7 @@ export class Canvas {
     const triggerDef = workflow.trigger?.type ? this.triggerRegistry.get(workflow.trigger.type) : null;
     const triggerEl = renderTriggerNode(workflow.trigger || {}, triggerDef, {
       selected: this.selectedId === workflow.trigger?.id,
+      t: this._t,
     });
     triggerEl.addEventListener("click", () => this._emit("wfb:select-trigger"));
     root.appendChild(this._wrap(triggerEl));
@@ -52,6 +55,7 @@ export class Canvas {
       const stepEl = renderStepNode(step, this.stepRegistry.get(step.type), {
         selected: this.selectedId === step.id,
         hasError: this.errors.has(step.id),
+        t: this._t,
       });
       stepEl.addEventListener("click", (e) => {
         if (e.target.closest("[data-act]")) return;
@@ -76,7 +80,7 @@ export class Canvas {
           col.className = `wfb-branch wfb-branch--${which}`;
           const label = document.createElement("div");
           label.className = `wfb-branch__label wfb-branch__label--${which}`;
-          label.textContent = which.toUpperCase();
+          label.textContent = this._t(which === "yes" ? "branch_yes" : "branch_no");
           col.appendChild(label);
           // plus to add at start of branch
           col.appendChild(this._renderConnectorWithPlus(step.id, which));
@@ -102,7 +106,7 @@ export class Canvas {
     wrap.className = "wfb-connector";
     wrap.innerHTML = `
       <div class="wfb-connector__line"></div>
-      <button class="wfb-plus" type="button" title="Add step">${icon("plus", { size: 14 })}</button>
+      <button class="wfb-plus" type="button" title="${this._t("add_step")}">${icon("plus", { size: 14 })}</button>
       <div class="wfb-connector__line"></div>
     `;
     const btn = wrap.querySelector(".wfb-plus");

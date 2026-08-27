@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-27
+
+### Changed
+- added support for internationalization (german and spanish)
+- added support for CSS customization on embedding using overwritting variables
+- fixed issue making the builder embeddable in other projects
+
 ## [0.1.2] — 2026-07-02
 
 ### Changed

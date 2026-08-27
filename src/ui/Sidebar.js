@@ -1,4 +1,5 @@
 import { icon } from "./Icon.js";
+import { defaultT } from "../i18n/index.js";
 
 /**
  * A simple right-side sliding sidebar.
@@ -9,27 +10,28 @@ import { icon } from "./Icon.js";
  *   - status: optional { enabled, onToggle(enabled) } to render a power toggle in the header
  */
 export class Sidebar {
-  constructor() {
+  constructor(t = defaultT) {
+    this._t = t;
     this.el = document.createElement("aside");
     this.el.className = "wfb-sidebar";
     this.el.innerHTML = `
       <header class="wfb-sidebar__header">
-        <h3 class="wfb-sidebar__title">Configuration</h3>
+        <h3 class="wfb-sidebar__title">${t("sidebar_default_title")}</h3>
         <div class="wfb-sidebar__head-actions">
           <label class="wfb-sidebar__status" style="display:none">
             <input type="checkbox" />
-            <span>Enabled</span>
+            <span>${t("sidebar_enabled_label")}</span>
           </label>
-          <button class="wfb-sidebar__widen" type="button" aria-label="Toggle width" title="Toggle sidebar width">
+          <button class="wfb-sidebar__widen" type="button" aria-label="${t("sidebar_toggle_width")}" title="${t("sidebar_expand")}">
             ${icon("expand", { size: 16 })}
           </button>
-          <button class="wfb-sidebar__close" type="button" aria-label="Close">${icon("close", { size: 18 })}</button>
+          <button class="wfb-sidebar__close" type="button" aria-label="${t("sidebar_close")}">${icon("close", { size: 18 })}</button>
         </div>
       </header>
       <div class="wfb-sidebar__body"></div>
       <footer class="wfb-sidebar__footer">
-        <button type="button" class="wfb-btn wfb-btn--ghost" data-act="cancel">Cancel</button>
-        <button type="button" class="wfb-btn wfb-btn--primary" data-act="save">Save</button>
+        <button type="button" class="wfb-btn wfb-btn--ghost" data-act="cancel">${t("sidebar_cancel")}</button>
+        <button type="button" class="wfb-btn wfb-btn--primary" data-act="save">${t("sidebar_save")}</button>
       </footer>
     `;
     this.titleEl = this.el.querySelector(".wfb-sidebar__title");
@@ -49,7 +51,7 @@ export class Sidebar {
   toggleWide(force) {
     const next = typeof force === "boolean" ? force : !this.el.classList.contains("wfb-sidebar--wide");
     this.el.classList.toggle("wfb-sidebar--wide", next);
-    this.widenBtn.title = next ? "Shrink sidebar" : "Expand sidebar";
+    this.widenBtn.title = next ? this._t("sidebar_shrink") : this._t("sidebar_expand");
   }
 
   open({ title, content, extras, status, onSave, hideFooter, onClose }) {

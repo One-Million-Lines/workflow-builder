@@ -1,12 +1,14 @@
 import { icon } from "../ui/Icon.js";
+import { defaultT } from "../i18n/index.js";
 
 /**
  * Floating popup menu showing available step types.
  */
 export class AddStepMenu {
-  constructor(stepRegistry, onPick) {
+  constructor(stepRegistry, onPick, t = defaultT) {
     this.stepRegistry = stepRegistry;
     this.onPick = onPick;
+    this._t = t;
     this.el = document.createElement("div");
     this.el.className = "wfb-add-menu";
     this.el.setAttribute("role", "menu");
@@ -47,7 +49,7 @@ export class AddStepMenu {
       groups[cat].push(s);
     });
     this.el.innerHTML = `
-      <div class="wfb-add-menu__header">Add step to your workflow</div>
+      <div class="wfb-add-menu__header">${this._t("add_step_header")}</div>
       <div class="wfb-add-menu__grid">
         ${steps
           .map(

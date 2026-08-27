@@ -9,3 +9,4 @@ export { buildRegistries } from "./registry/index.js";
 export { MockBackend, createDefaultDataProvider } from "./services/MockBackend.js";
 export { EmailTemplateBuilder } from "./extensions/email/EmailTemplateBuilder.js";
 export { defaultDefinitions, defaultConditionsSchema } from "./definitions/index.js";
+export { createI18n } from "./i18n/index.js";

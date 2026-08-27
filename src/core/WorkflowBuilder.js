@@ -10,9 +10,10 @@ import { renderForm } from "../forms/FormRenderer.js";
 import { createDefaultDataProvider } from "../services/MockBackend.js";
 import { EmailTemplateBuilder } from "../extensions/email/EmailTemplateBuilder.js";
 import { defaultDefinitions } from "../definitions/index.js";
+import { createI18n } from "../i18n/index.js";
 
 export class WorkflowBuilder extends EventEmitter {
-  constructor({ container, workflow, registries, extensions, dataProvider, modules, onChange, onSave }) {
+  constructor({ container, workflow, registries, extensions, dataProvider, modules, onChange, onSave, locale, theme }) {
     super();
     this._containerSel = container;
     this._initialWorkflow = workflow || null;
@@ -20,6 +21,8 @@ export class WorkflowBuilder extends EventEmitter {
     this._extensions = Array.isArray(extensions) ? [...extensions] : [];
     this._dataProvider = dataProvider || createDefaultDataProvider();
     this._modules = { ...(modules || {}) };
+    this._theme = theme || null;
+    this._t = createI18n(locale || "en");
     if (onChange) this.on("workflow:change", onChange);
     if (onSave) this.on("workflow:save", onSave);
   }
@@ -49,12 +52,21 @@ export class WorkflowBuilder extends EventEmitter {
     this._root = document.createElement("div");
     this._root.className = "wfb-root oml-workflow-builder";
 
+    // Apply custom theme CSS variables (overrides design tokens from stylesheet).
+    if (this._theme && typeof this._theme === "object") {
+      Object.entries(this._theme).forEach(([k, v]) => {
+        const prop = k.startsWith("--") ? k : `--wfb-${k}`;
+        this._root.style.setProperty(prop, v);
+      });
+    }
+
     this._canvas = new Canvas({
       stepRegistry: this._reg.steps,
       triggerRegistry: this._reg.triggers,
+      t: this._t,
     });
-    this._addMenu = new AddStepMenu(this._reg.steps, (type, ctx) => this._handleAddStep(type, ctx));
-    this._sidebar = new Sidebar();
+    this._addMenu = new AddStepMenu(this._reg.steps, (type, ctx) => this._handleAddStep(type, ctx), this._t);
+    this._sidebar = new Sidebar(this._t);
 
     this._root.appendChild(this._canvas.el);
     this._addMenu.mount(this._root);
@@ -150,11 +162,7 @@ export class WorkflowBuilder extends EventEmitter {
         if (yesCount > 0 || noCount > 0) {
           // Three options: keep YES branch, keep NO branch, or remove all
           const choice = window.prompt(
-            "Removing this condition. What should happen with its branches?\n" +
-            "Type:  yes  to keep the YES branch in place\n" +
-            "       no   to keep the NO branch in place\n" +
-            "       all  to remove the condition AND both branches\n" +
-            "Cancel to abort.",
+            this._t("condition_remove_prompt"),
             yesCount > 0 ? "yes" : "no"
           );
           if (choice === null) return;
@@ -185,10 +193,7 @@ export class WorkflowBuilder extends EventEmitter {
     // If we just added a condition that has siblings AFTER it, offer to move them into a branch.
     if (type === "condition" && this._state.hasSiblingsAfter(step.id)) {
       const choice = window.prompt(
-        "There are steps after this condition. Move them into a branch?\n" +
-        "Type:  yes  to move them under the YES branch\n" +
-        "       no   to move them under the NO branch\n" +
-        "Cancel or anything else to leave them in place.",
+        this._t("move_branch_prompt"),
         "yes"
       );
       if (choice !== null) {
@@ -230,9 +235,9 @@ export class WorkflowBuilder extends EventEmitter {
     const typeField = document.createElement("div");
     typeField.className = "wfb-field";
     typeField.innerHTML = `
-      <label class="wfb-field__label">Trigger type</label>
+    <label class="wfb-field__label">${this._t("trigger_type_label")}</label>
       <select class="wfb-input" id="wfb-trigger-type">
-        <option value="">Select trigger…</option>
+      <option value="">${this._t("trigger_type_placeholder")}</option>
         ${this._reg.triggers.list().map((t) => `<option value="${t.type}">${t.label}</option>`).join("")}
       </select>
     `;
@@ -262,7 +267,7 @@ export class WorkflowBuilder extends EventEmitter {
       content: wrapper,
       onSave: () => {
         const type = select.value;
-        if (!type) { alert("Please choose a trigger type."); return; }
+        if (!type) { alert(this._t("trigger_type_required")); return; }
         let config = {};
         if (form) {
           const v = form.validate();
@@ -302,11 +307,11 @@ export class WorkflowBuilder extends EventEmitter {
       extrasNode.className = "wfb-section";
       const title = document.createElement("h4");
       title.className = "wfb-section__title";
-      title.textContent = "Additional conditions";
+      title.textContent = this._t("additional_conditions");
       extrasNode.appendChild(title);
       const help = document.createElement("div");
       help.className = "wfb-info";
-      help.textContent = "Only execute this step if the conditions below are met.";
+      help.textContent = this._t("conditions_help");
       extrasNode.appendChild(help);
 
       // Normalise step.conditions into { match, items }
@@ -320,7 +325,7 @@ export class WorkflowBuilder extends EventEmitter {
             name: "conditions",
             label: "",
             type: "condition_group",
-            add_label: "Add condition",
+            add_label: this._t("add_condition"),
             item_label: condSchema.item_label || "Condition",
             item_fields: condSchema.item_fields,
             default_match: "all",
@@ -335,7 +340,7 @@ export class WorkflowBuilder extends EventEmitter {
     if (!schema) {
       const div = document.createElement("div");
       div.className = "wfb-empty";
-      div.textContent = `${def.label}: ${def.description || "No configuration."}`;
+      div.textContent = `${def.label}: ${def.description || this._t("no_configuration")}`;
       this._sidebar.open({ title: def.label, content: div, hideFooter: true, status });
       return;
     }

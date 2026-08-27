@@ -98,6 +98,12 @@ export type DataProvider = (
 /** A module factory handles custom field requests (e.g. `email_template`). */
 export type ModuleFactory = (props: unknown) => unknown;
 
+/** CSS variable name → value map for theming the embedded builder. */
+export type ThemeVars = Record<string, string>;
+
+/** Supported built-in locale codes. */
+export type LocaleCode = "en" | "de" | "es";
+
 export interface WorkflowBuilderOptions {
   /** A CSS selector string or an HTMLElement to mount into. */
   container: string | HTMLElement;
@@ -115,6 +121,37 @@ export interface WorkflowBuilderOptions {
   onChange?: (workflow: Workflow) => void;
   /** Convenience callback wired to the `workflow:save` event. */
   onSave?: (workflow: Workflow) => void;
+  /**
+   * UI locale. Built-in codes: "en" (default), "de", "es".
+   * Pass a full messages object to supply a custom locale.
+   */
+  locale?: LocaleCode | Record<string, string>;
+  /**
+   * Custom CSS design tokens applied as inline custom properties on the root element.
+   * Keys may be full property names ("--wfb-primary") or short names ("primary").
+   * Short names are automatically prefixed with "--wfb-".
+   *
+   * Available tokens:
+   *   --wfb-bg             canvas background colour
+   *   --wfb-dot-color      canvas dot colour
+   *   --wfb-node-bg        node card background
+   *   --wfb-node-border    node card border colour
+   *   --wfb-node-selected  selected-node border colour
+   *   --wfb-text           primary text colour
+   *   --wfb-muted          secondary / placeholder text colour
+   *   --wfb-success        success / yes-branch colour
+   *   --wfb-danger         error / no-branch colour
+   *   --wfb-warning        warning colour
+   *   --wfb-primary        accent / button colour
+   *   --wfb-radius         node border-radius
+   *   --wfb-shadow         default card box-shadow
+   *   --wfb-shadow-lg      elevated card box-shadow
+   *   --wfb-canvas-padding canvas scroll-area padding (e.g. "32px 16px 80px")
+   *   --wfb-node-padding   node card inner padding (e.g. "12px 14px")
+   *   --wfb-sidebar-width  sidebar panel width (e.g. "380px")
+   *   --wfb-sidebar-padding sidebar body padding (e.g. "16px")
+   */
+  theme?: ThemeVars;
 }
 
 export type WorkflowBuilderEvent =
@@ -188,6 +225,17 @@ export interface CreateWorkflowBuilderOptions
 export function createWorkflowBuilder(
   options: CreateWorkflowBuilderOptions,
 ): WorkflowBuilderInstance;
+
+/**
+ * Create a translation function for the given locale.
+ * @param locale  Built-in locale code ("en" | "de" | "es") or a full messages object.
+ * @param overrides  Optional partial message overrides merged on top of the resolved locale.
+ * @returns A `t(key)` function that returns the translated string.
+ */
+export function createI18n(
+  locale?: LocaleCode | Record<string, string>,
+  overrides?: Record<string, string>,
+): (key: string) => string;
 
 export class WorkflowState {
   constructor(workflow?: Workflow | null);
