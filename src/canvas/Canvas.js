@@ -2,96 +2,197 @@ import { renderTriggerNode, renderStepNode } from "./NodeRenderer.js";
 import { icon } from "../ui/Icon.js";
 import { defaultT } from "../i18n/index.js";
 
+// Safe fallbacks for environments that lack rAF (SSR, test runners, jsdom without mock)
+const _raf = typeof requestAnimationFrame === "function"
+  ? requestAnimationFrame
+  : (fn) => { fn(); return 0; };
+const _caf = typeof cancelAnimationFrame === "function"
+  ? cancelAnimationFrame
+  : () => {};
+
 /**
  * Canvas renders the entire workflow tree vertically with branches.
  *
- * Emits DOM events on its root element:
- *   - "wfb:select-node"    detail: { id }
- *   - "wfb:add-step"       detail: { parentId, branch?, anchorEl }
- *   - "wfb:delete-step"    detail: { id }
- *   - "wfb:toggle-step"    detail: { id }
- *   - "wfb:select-trigger" detail: {}
+ * Performance contract
+ * ─────────────────────
+ * • render(workflow)   — schedules a full structural rebuild via requestAnimationFrame.
+ *                        Multiple back-to-back calls in the same JS tick collapse into one.
+ * • renderNow(workflow)— forces a synchronous structural rebuild (cancels any pending rAF).
+ * • refreshVisual()    — updates ONLY selection / error classes on existing nodes.
+ *                        Never touches innerHTML; safe to call as often as needed.
+ *
+ * Event handling
+ * ──────────────
+ * Uses a single delegated click listener on this.el instead of per-node listeners.
+ * Node and connector elements carry data attributes so the handler can route events:
+ *   [data-id]        — step / trigger id
+ *   [data-act]       — "delete" | "toggle" (action buttons inside a node)
+ *   [data-plus-id]   — parentId for connector + buttons
+ *   [data-branch]    — "yes" | "no" for branch connectors
+ *
+ * Emits CustomEvents on this.el:
+ *   "wfb:select-trigger"   detail: {}
+ *   "wfb:select-node"      detail: { id }
+ *   "wfb:add-step"         detail: { parentId, branch?, anchorEl }
+ *   "wfb:delete-step"      detail: { id }
+ *   "wfb:toggle-step"      detail: { id }
  */
 export class Canvas {
   constructor({ stepRegistry, triggerRegistry, t = defaultT }) {
     this.stepRegistry = stepRegistry;
     this.triggerRegistry = triggerRegistry;
     this._t = t;
+
     this.el = document.createElement("div");
     this.el.className = "wfb-canvas";
     this._scroll = document.createElement("div");
     this._scroll.className = "wfb-canvas__scroll";
     this.el.appendChild(this._scroll);
+
     this.selectedId = null;
-    this.errors = new Set(); // ids with config errors
+    this.errors = new Set();
+
+    // rAF batching state
+    this._rafId = null;
+    this._pendingWorkflow = null;
+
+    // Pre-compute static parts used in every connector
+    this._plusTitle = t("add_step");
+    this._plusIconHtml = icon("plus", { size: 14 });
+
+    // Single delegated event listener — installed once, never torn down
+    this._scroll.addEventListener("click", (e) => this._handleClick(e));
   }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
 
   setSelected(id) { this.selectedId = id; }
   setErrorIds(ids) { this.errors = new Set(ids || []); }
 
+  /**
+   * Schedule a full structural re-render.
+   * Multiple synchronous calls within the same JS task are coalesced into one rAF.
+   */
   render(workflow) {
+    this._pendingWorkflow = workflow;
+    if (!this._rafId) {
+      this._rafId = _raf(() => {
+        this._rafId = null;
+        const wf = this._pendingWorkflow;
+        this._pendingWorkflow = null;
+        this._doRender(wf);
+      });
+    }
+  }
+
+  /**
+   * Cancel any pending deferred render (call before removing from DOM).
+   */
+  cancel() {
+    if (this._rafId) {
+      _caf(this._rafId);
+      this._rafId = null;
+      this._pendingWorkflow = null;
+    }
+  }
+
+  /**
+   * Force a synchronous structural re-render, cancelling any queued rAF.
+   * Use this when the DOM must be up-to-date immediately (e.g. initial mount).
+   */
+  renderNow(workflow) {
+    this.cancel();
+    this._doRender(workflow);
+  }
+
+  /**
+   * Update ONLY the visual state (selected / error classes) on already-rendered nodes.
+   * Does NOT touch innerHTML or recreate any elements — runs in O(n) DOM queries.
+   */
+  refreshVisual() {
+    const trigId = this._lastTrigId;
+    this._scroll.querySelectorAll(".wfb-node[data-id]").forEach((node) => {
+      const id = node.dataset.id;
+      const isSelected = this.selectedId === id;
+      const hasError = this.errors.has(id);
+
+      node.classList.toggle("wfb-node--selected", isSelected);
+      node.classList.toggle("wfb-node--error", hasError);
+
+      // Sync error flag badge
+      let flag = node.querySelector(".wfb-node__error-flag");
+      if (hasError && !flag) {
+        flag = document.createElement("div");
+        flag.className = "wfb-node__error-flag";
+        flag.title = this._t("config_incomplete");
+        flag.innerHTML = icon("alert", { size: 12 });
+        node.appendChild(flag);
+      } else if (!hasError && flag) {
+        flag.remove();
+      }
+
+      // Sync status dot title
+      const statusDot = node.querySelector(".wfb-node__status");
+      if (statusDot) {
+        statusDot.title = node.classList.contains("wfb-node--disabled")
+          ? this._t("disabled")
+          : this._t("enabled");
+      }
+    });
+  }
+
+  // ── Private ─────────────────────────────────────────────────────────────────
+
+  _doRender(workflow) {
     this._scroll.innerHTML = "";
     const root = document.createElement("div");
     root.className = "wfb-flow";
     this._scroll.appendChild(root);
 
-    // Trigger
-    const triggerDef = workflow.trigger?.type ? this.triggerRegistry.get(workflow.trigger.type) : null;
-    const triggerEl = renderTriggerNode(workflow.trigger || {}, triggerDef, {
-      selected: this.selectedId === workflow.trigger?.id,
+    const trigger = workflow.trigger || {};
+    this._lastTrigId = trigger.id;
+
+    // Trigger node
+    const triggerDef = trigger.type ? this.triggerRegistry.get(trigger.type) : null;
+    const triggerEl = renderTriggerNode(trigger, triggerDef, {
+      selected: this.selectedId === trigger.id,
       t: this._t,
     });
-    triggerEl.addEventListener("click", () => this._emit("wfb:select-trigger"));
     root.appendChild(this._wrap(triggerEl));
+    root.appendChild(this._makeConnector(trigger.id || "trigger"));
 
-    // Plus between trigger and first step (insert at root index 0)
-    root.appendChild(this._renderConnectorWithPlus(workflow.trigger?.id || "trigger"));
-
-    this._renderStepList(root, workflow.steps || [], null);
+    this._renderStepList(root, workflow.steps || []);
   }
 
-  _renderStepList(container, steps, branchOwnerId) {
-    steps.forEach((step, idx) => {
+  _renderStepList(container, steps) {
+    for (const step of steps) {
       const stepEl = renderStepNode(step, this.stepRegistry.get(step.type), {
         selected: this.selectedId === step.id,
         hasError: this.errors.has(step.id),
         t: this._t,
       });
-      stepEl.addEventListener("click", (e) => {
-        if (e.target.closest("[data-act]")) return;
-        this._emit("wfb:select-node", { id: step.id });
-      });
-      stepEl.querySelector('[data-act="delete"]')?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this._emit("wfb:delete-step", { id: step.id });
-      });
-      stepEl.querySelector('[data-act="toggle"]')?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this._emit("wfb:toggle-step", { id: step.id });
-      });
+      // No inline listeners — delegation handles all interaction
       container.appendChild(this._wrap(stepEl));
 
       if (step.type === "condition") {
-        // Branches container
         const branchWrap = document.createElement("div");
         branchWrap.className = "wfb-branches";
         for (const which of ["yes", "no"]) {
           const col = document.createElement("div");
           col.className = `wfb-branch wfb-branch--${which}`;
-          const label = document.createElement("div");
-          label.className = `wfb-branch__label wfb-branch__label--${which}`;
-          label.textContent = this._t(which === "yes" ? "branch_yes" : "branch_no");
-          col.appendChild(label);
-          // plus to add at start of branch
-          col.appendChild(this._renderConnectorWithPlus(step.id, which));
-          this._renderStepList(col, step.branches?.[which] || [], step.id);
+          const labelEl = document.createElement("div");
+          labelEl.className = `wfb-branch__label wfb-branch__label--${which}`;
+          labelEl.textContent = this._t(which === "yes" ? "branch_yes" : "branch_no");
+          col.appendChild(labelEl);
+          col.appendChild(this._makeConnector(step.id, which));
+          this._renderStepList(col, step.branches?.[which] || []);
           branchWrap.appendChild(col);
         }
         container.appendChild(branchWrap);
       } else if (step.type !== "exit") {
-        container.appendChild(this._renderConnectorWithPlus(step.id));
+        container.appendChild(this._makeConnector(step.id));
       }
-    });
+    }
   }
 
   _wrap(node) {
@@ -101,20 +202,60 @@ export class Canvas {
     return w;
   }
 
-  _renderConnectorWithPlus(parentId, branch) {
+  /** Build a connector (line + plus button + line). Data attributes enable delegation. */
+  _makeConnector(parentId, branch) {
     const wrap = document.createElement("div");
     wrap.className = "wfb-connector";
+    // Encode routing data on the button — no closure needed
+    const branchAttr = branch ? ` data-branch="${branch}"` : "";
     wrap.innerHTML = `
       <div class="wfb-connector__line"></div>
-      <button class="wfb-plus" type="button" title="${this._t("add_step")}">${icon("plus", { size: 14 })}</button>
+      <button class="wfb-plus" type="button"
+        title="${this._plusTitle}"
+        data-plus-id="${parentId}"${branchAttr}>${this._plusIconHtml}</button>
       <div class="wfb-connector__line"></div>
     `;
-    const btn = wrap.querySelector(".wfb-plus");
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this._emit("wfb:add-step", { parentId, branch: branch || null, anchorEl: btn });
-    });
     return wrap;
+  }
+
+  /** Single delegated click handler — routes to the correct event. */
+  _handleClick(e) {
+    // 1. Action button (delete / toggle) inside a node
+    const actBtn = e.target.closest("[data-act]");
+    if (actBtn) {
+      e.stopPropagation();
+      const nodeEl = actBtn.closest(".wfb-node[data-id]");
+      const id = nodeEl?.dataset.id;
+      if (!id) return;
+      const act = actBtn.dataset.act;
+      if (act === "delete") this._emit("wfb:delete-step", { id });
+      else if (act === "toggle") this._emit("wfb:toggle-step", { id });
+      return;
+    }
+
+    // 2. Plus / connector button
+    const plusBtn = e.target.closest("[data-plus-id]");
+    if (plusBtn) {
+      e.stopPropagation();
+      this._emit("wfb:add-step", {
+        parentId: plusBtn.dataset.plusId,
+        branch: plusBtn.dataset.branch || null,
+        anchorEl: plusBtn,
+      });
+      return;
+    }
+
+    // 3. Trigger node click
+    if (e.target.closest(".wfb-node--trigger")) {
+      this._emit("wfb:select-trigger");
+      return;
+    }
+
+    // 4. Step node click
+    const stepNode = e.target.closest(".wfb-node[data-id]");
+    if (stepNode) {
+      this._emit("wfb:select-node", { id: stepNode.dataset.id });
+    }
   }
 
   _emit(name, detail = {}) {

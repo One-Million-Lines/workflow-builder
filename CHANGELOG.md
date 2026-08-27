@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-08-27
+
+### Changed
+- FIX memory leak problem with the canvas
+
 ## [0.2.0] — 2026-08-27
 
 ### Changed

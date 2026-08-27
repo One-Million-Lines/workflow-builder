@@ -80,10 +80,14 @@ export class WorkflowBuilder extends EventEmitter {
     }
 
     this._wireCanvasEvents();
-    this._render();
+    // Initial render is synchronous so the workflow is visible immediately.
+    const initResult = this._validator.validate(this._state.getWorkflow());
+    this._canvas.setErrorIds(initResult.errors.filter((e) => e.id).map((e) => e.id));
+    this._canvas.renderNow(this._state.getWorkflow());
   }
 
   unmount() {
+    this._canvas?.cancel();
     this._root?.remove();
   }
 
@@ -216,11 +220,14 @@ export class WorkflowBuilder extends EventEmitter {
 
   _render(rebuild = true) {
     if (rebuild) {
-      // recompute validation flags (silent)
+      // Recompute validation flags (silent) then schedule a structural rebuild
       const result = this._validator.validate(this._state.getWorkflow());
       this._canvas.setErrorIds(result.errors.filter((e) => e.id).map((e) => e.id));
+      this._canvas.render(this._state.getWorkflow()); // batched via rAF
+    } else {
+      // Only selection or error classes changed — no DOM rebuild needed
+      this._canvas.refreshVisual();
     }
-    this._canvas.render(this._state.getWorkflow());
   }
 
   _openTriggerEditor() {
