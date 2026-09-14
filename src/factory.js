@@ -59,6 +59,16 @@ export function createWorkflowBuilder(options = {}) {
     validate() {
       return instance.validate();
     },
+    /**
+     * Programmatically commit the currently-open sidebar (clicks its Save
+     * button), then return the latest workflow. Call this before reading the
+     * workflow on an explicit "Done" / save action so that any in-progress
+     * step/trigger form is applied first.
+     */
+    commitAndGetWorkflow() {
+      instance.commitSidebar?.();
+      return instance.getWorkflow();
+    },
     /** Subscribe to a builder event; returns an unsubscribe function. */
     on(event, handler) {
       return instance.on(event, handler);

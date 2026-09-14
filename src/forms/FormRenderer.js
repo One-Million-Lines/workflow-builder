@@ -33,12 +33,18 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
   const ctx = { state, fieldEls: new Map(), formCtx };
 
   for (const field of schema.fields) {
-    const wrap = renderFieldWrap(field, ctx, () => rerenderVisibility(schema, ctx));
+    const wrap = renderFieldWrap(field, ctx, (changedFieldName) => rerenderVisibility(schema, ctx, changedFieldName));
     ctx.fieldEls.set(field.name, wrap);
     container.appendChild(wrap);
   }
 
-  function rerenderVisibility(schemaRef, ctxRef) {
+  /**
+   * changedField (optional): the name of the field that triggered the update.
+   * When provided, only dependent selects that list that field in `depends_on`
+   * are reloaded — prevents the O(n²) reload chain that would otherwise occur
+   * on every key-press.  Pass `null` from `setValues` to reload everything.
+   */
+  function rerenderVisibility(schemaRef, ctxRef, changedField = null) {
     for (const field of schemaRef.fields) {
       const wrap = ctxRef.fieldEls.get(field.name);
       if (!wrap) continue;
@@ -56,15 +62,17 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
         if (inp) inp.value = v;
       }
     }
-    // Notify async selects that may depend on other fields
+    // Reload async selects — but only those whose `depends_on` list includes
+    // the field that just changed. If changedField is null (full refresh), reload all.
     for (const field of schemaRef.fields) {
       if (!field.depends_on || !field.options_source) continue;
+      if (changedField !== null && !field.depends_on.includes(changedField)) continue;
       const w = ctxRef.fieldEls.get(field.name);
       const sel = w?.querySelector("select.wfb-input");
       if (sel && typeof sel._wfbReload === "function") sel._wfbReload();
     }
   }
-  rerenderVisibility(schema, ctx);
+  rerenderVisibility(schema, ctx, null);
 
   return {
     element: container,
@@ -83,11 +91,11 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
       ctx.fieldEls.clear();
       applyDefaults(schema.fields, state);
       for (const field of schema.fields) {
-        const wrap = renderFieldWrap(field, ctx, () => rerenderVisibility(schema, ctx));
+        const wrap = renderFieldWrap(field, ctx, (changedFieldName) => rerenderVisibility(schema, ctx, changedFieldName));
         ctx.fieldEls.set(field.name, wrap);
         container.appendChild(wrap);
       }
-      rerenderVisibility(schema, ctx);
+      rerenderVisibility(schema, ctx, null); // full reload on setValues
     },
     validate() {
       const errors = [];
@@ -220,7 +228,7 @@ function renderFieldWrap(field, ctx, onChange) {
 
   const input = renderInput(field, ctx.state[field.name], (v) => {
     ctx.state[field.name] = v;
-    onChange();
+    onChange(field.name);  // pass which field changed so rerenderVisibility can be targeted
   }, ctx);
   if (input.tagName !== "DIV" && input.tagName !== "LABEL") input.id = id;
   wrap.appendChild(input);
@@ -274,32 +282,45 @@ function renderInput(field, value, onChange, ctx) {
         s.innerHTML = `<option value="">Loading…</option>`;
         s.disabled = true;
         s._wfbReload = async () => {
-          const deps = {};
-          if (Array.isArray(field.depends_on)) {
-            for (const d of field.depends_on) deps[d] = ctx?.state?.[d];
-          }
-          const opts = provider
-            ? await provider(field.options_source, { depends: deps })
-            : [];
-          const prev = s.value || value || "";
-          s.disabled = false;
-          s.innerHTML = "";
-          if (field.allow_empty !== false) {
-            const empty = document.createElement("option");
-            empty.value = ""; empty.textContent = field.placeholder || "Select…";
-            s.appendChild(empty);
-          }
-          for (const opt of opts) {
-            const o = document.createElement("option");
-            o.value = opt.value; o.textContent = opt.label;
-            if (opt.type) o.dataset.type = opt.type;
-            s.appendChild(o);
-          }
-          if (prev && Array.from(s.options).some((o) => o.value === prev)) {
-            s.value = prev;
-          } else if (s.options.length) {
-            s.value = s.options[0].value;
-            onChange(s.value);
+          // Guard: skip if a reload is already in flight (prevents amplification
+          // when rerenderVisibility triggers multiple concurrent reloads).
+          if (s._wfbLoading) return;
+          s._wfbLoading = true;
+          try {
+            const deps = {};
+            if (Array.isArray(field.depends_on)) {
+              for (const d of field.depends_on) deps[d] = ctx?.state?.[d];
+            }
+            const opts = provider
+              ? await provider(field.options_source, { depends: deps })
+              : [];
+            const prev = s.value || value || "";
+            s.disabled = false;
+            s.innerHTML = "";
+            if (field.allow_empty !== false) {
+              const empty = document.createElement("option");
+              empty.value = ""; empty.textContent = field.placeholder || "Select…";
+              s.appendChild(empty);
+            }
+            for (const opt of opts) {
+              const o = document.createElement("option");
+              o.value = opt.value; o.textContent = opt.label;
+              if (opt.type) o.dataset.type = opt.type;
+              s.appendChild(o);
+            }
+            if (prev && Array.from(s.options).some((o) => o.value === prev)) {
+              if (s.value !== prev) s.value = prev;
+            } else if (s.options.length) {
+              const first = s.options[0].value;
+              s.value = first;
+              // Only fire onChange when the value genuinely changes so we don't
+              // trigger redundant rerenderVisibility calls.
+              if (ctx.state[field.name] !== first) {
+                onChange(first);
+              }
+            }
+          } finally {
+            s._wfbLoading = false;
           }
         };
         // Kick off initial load

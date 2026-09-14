@@ -105,6 +105,19 @@ export class WorkflowBuilder extends EventEmitter {
     if (!result.valid) this.emit("validation:error", result);
     return result;
   }
+  /**
+   * Programmatically trigger the sidebar's Save button when the sidebar is
+   * open. This commits any in-progress step/trigger form so that a subsequent
+   * `getWorkflow()` call returns the fully up-to-date workflow.
+   * Returns `true` when a save was triggered, `false` when nothing was open.
+   */
+  commitSidebar() {
+    if (this._sidebar?.el.classList.contains("wfb-sidebar--open")) {
+      this._sidebar._saveBtn?.click();
+      return true;
+    }
+    return false;
+  }
   export() { return WorkflowSerializer.export(this._state.getWorkflow()); }
   import(json) { this.setWorkflow(json); }
   addStep(parentStepId, stepType, position = "after") {
@@ -294,6 +307,23 @@ export class WorkflowBuilder extends EventEmitter {
     this._canvas.setSelected(stepId);
     this._render(false);
     this.emit("step:select", { id: stepId, kind: "step" });
+
+    // Step plugin: if a module matching the step type is registered, delegate to
+    // it instead of opening the standard form sidebar. The plugin receives the
+    // current config and an onSave callback. This allows host apps to wire in
+    // their own editors (e.g. an email builder React component) without touching
+    // the sidebar form system.
+    const plugin = this._modules[step.type];
+    if (typeof plugin === "function") {
+      plugin({
+        config: { ...(step.config || {}) },
+        step: { id: step.id, type: step.type, title: step.title, enabled: step.enabled },
+        onSave: (newConfig) => {
+          this.updateStep(stepId, { config: newConfig });
+        },
+      });
+      return;
+    }
 
     const def = this._reg.steps.get(step.type);
     if (!def) return;

@@ -6,6 +6,25 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-09-14
+
+### Fixed
+- **Infinite-loop / page-freeze when editing step/trigger forms** — `rerenderVisibility` now accepts a `changedField` argument and only reloads `options_source` selects whose `depends_on` list includes that field, eliminating the O(n²) reload chain that fired on every keystroke.
+- **`_wfbReload` concurrent-invocation amplification** — added a `_wfbLoading` guard flag; a new reload is skipped if one is already in flight for the same select element.
+- **Spurious `onChange` from `_wfbReload`** — `onChange` is now fired only when the selected value genuinely changes, avoiding unnecessary rerenderVisibility cascades.
+
+### Added
+- **Step-level plugins** — `WorkflowBuilder` now checks `modules[step.type]` before opening the standard sidebar form. If a callable is found it is invoked with `{ config, step, onSave }`, allowing host applications to wire in their own editors (React components, modals, etc.) without touching the sidebar system.
+
+## [0.2.2] — 2026-09-14
+
+### Added
+- `WorkflowBuilder.commitSidebar()` — programmatically triggers the sidebar's Save button when it is open, so callers can commit any in-progress step/trigger form before reading the final workflow.
+- `createWorkflowBuilder` factory now exposes `commitAndGetWorkflow()` — commits the sidebar then returns the latest workflow in one call.
+
+### Changed
+- Shortened connector line segments (before and after the `+` add-step button) from 16 px to 8 px for a more compact flow layout.
+
 ## [0.2.1] — 2026-08-27
 
 ### Changed
