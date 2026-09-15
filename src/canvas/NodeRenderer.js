@@ -24,12 +24,15 @@ export function renderTriggerNode(trigger, triggerDef, { selected, t = defaultT 
   return node;
 }
 
-export function renderStepNode(step, stepDef, { selected, hasError, t = defaultT }) {
+export function renderStepNode(step, stepDef, { selected, hasError, hasPlugin, t = defaultT }) {
   const node = document.createElement("div");
   const cls = ["wfb-node", `wfb-node--${step.type}`];
   if (selected) cls.push("wfb-node--selected");
-  if (!step.enabled) cls.push("wfb-node--disabled");
+  // Use canonical status field; fall back to enabled for backward compat
+  const isInactive = step.status === "inactive" || (!("status" in step) && step.enabled === false);
+  if (isInactive) cls.push("wfb-node--disabled");
   if (hasError) cls.push("wfb-node--error");
+  if (hasPlugin) cls.push("wfb-node--plugin");
   node.className = cls.join(" ");
   node.dataset.id = step.id;
 
@@ -41,20 +44,26 @@ export function renderStepNode(step, stepDef, { selected, hasError, t = defaultT
   const extra = condCount
     ? ` <span class="wfb-node__chip" title="${condCount} extra condition(s), match ${condMatch}">+${condCount} ${condMatch === "any" ? "any" : "all"}</span>`
     : "";
+  const statusLabel = isInactive ? t("status_inactive") : t("status_active");
+  const toggleLabel = isInactive ? t("set_active") : t("set_inactive");
   node.innerHTML = `
     <div class="wfb-node__row">
-      <span class="wfb-node__status" title="${step.enabled ? t("enabled") : t("disabled")}"></span>
+      <span class="wfb-node__status" title="${statusLabel}"></span>
       <span class="wfb-node__icon">${icon(stepDef?.icon || "gear", { size: 18 })}</span>
       <div class="wfb-node__content">
         <div class="wfb-node__title">${escapeHtml(stepDef?.label || step.type)}${extra}</div>
         <div class="wfb-node__summary">${escapeHtml(summary)}</div>
       </div>
       <div class="wfb-node__actions">
-        <button class="wfb-iconbtn" data-act="toggle" title="${t("enable_disable")}" type="button">${icon("power", { size: 14 })}</button>
+        <button class="wfb-status-toggle wfb-status-toggle--${isInactive ? "inactive" : "active"}"
+          data-act="toggle" title="${toggleLabel}" type="button">
+          ${isInactive ? escapeHtml(t("status_inactive")) : escapeHtml(t("status_active"))}
+        </button>
         <button class="wfb-iconbtn" data-act="delete" title="${t("delete")}" type="button">${icon("trash", { size: 14 })}</button>
       </div>
     </div>
     ${hasError ? `<div class="wfb-node__error-flag" title="${t("config_incomplete")}">${icon("alert", { size: 12 })}</div>` : ""}
+    ${hasPlugin ? `<div class="wfb-node__plugin-badge" title="Managed by plugin">${icon("link", { size: 10 })}</div>` : ""}
   `;
   return node;
 }
@@ -89,8 +98,8 @@ function summarizeStep(s, t = defaultT) {
       const subj = c.subject || tpl.subject;
       return subj || (c.template_id ? `Template ${c.template_id}` : t("click_to_configure"));
     }
-    case "sms": return c.message ? truncate(c.message, 50) : t("click_to_configure");
-    case "whatsapp": return c.message ? truncate(c.message, 50) : t("click_to_configure");
+    case "sms": return c.template_id ? `Template ${c.template_id}` : (c.message ? truncate(c.message, 50) : t("click_to_configure"));
+    case "whatsapp": return c.template_id ? `Template ${c.template_id}` : (c.message ? truncate(c.message, 50) : t("click_to_configure"));
     case "webpush": return c.title || t("click_to_configure");
     case "delay":
       if (c.mode === "now") return t("summary_continue_immediately");

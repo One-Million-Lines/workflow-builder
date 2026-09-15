@@ -4,10 +4,14 @@ import { defaultT } from "../i18n/index.js";
 /**
  * A simple right-side sliding sidebar.
  *
- * open({ title, content, extras, status, onSave, hideFooter, onClose })
- *   - content: Node or HTML string for the main body
- *   - extras: optional Node appended after the main content (e.g. step-level conditions)
- *   - status: optional { enabled, onToggle(enabled) } to render a power toggle in the header
+ * Changes are auto-committed on every form input — there are no Save/Cancel
+ * buttons. The sidebar just shows the configuration form and closes with X.
+ *
+ * open({ title, content, extras, status, onCommit, onClose })
+ *   - content: Node for the main body
+ *   - extras:  optional Node appended after main content
+ *   - status:  optional { value:"active"|"inactive", onToggle(newValue) }
+ *   - onCommit: optional callback used to flush the open editor on host save
  */
 export class Sidebar {
   constructor(t = defaultT) {
@@ -20,7 +24,7 @@ export class Sidebar {
         <div class="wfb-sidebar__head-actions">
           <label class="wfb-sidebar__status" style="display:none">
             <input type="checkbox" />
-            <span>${t("sidebar_enabled_label")}</span>
+            <span class="wfb-sidebar__status-label">${t("sidebar_enabled_label")}</span>
           </label>
           <button class="wfb-sidebar__widen" type="button" aria-label="${t("sidebar_toggle_width")}" title="${t("sidebar_expand")}">
             ${icon("expand", { size: 16 })}
@@ -29,21 +33,14 @@ export class Sidebar {
         </div>
       </header>
       <div class="wfb-sidebar__body"></div>
-      <footer class="wfb-sidebar__footer">
-        <button type="button" class="wfb-btn wfb-btn--ghost" data-act="cancel">${t("sidebar_cancel")}</button>
-        <button type="button" class="wfb-btn wfb-btn--primary" data-act="save">${t("sidebar_save")}</button>
-      </footer>
     `;
-    this.titleEl = this.el.querySelector(".wfb-sidebar__title");
-    this.bodyEl = this.el.querySelector(".wfb-sidebar__body");
-    this.footerEl = this.el.querySelector(".wfb-sidebar__footer");
-    this.statusEl = this.el.querySelector(".wfb-sidebar__status");
+    this.titleEl    = this.el.querySelector(".wfb-sidebar__title");
+    this.bodyEl     = this.el.querySelector(".wfb-sidebar__body");
+    this.statusEl   = this.el.querySelector(".wfb-sidebar__status");
     this.statusInput = this.statusEl.querySelector("input");
-    this.widenBtn = this.el.querySelector(".wfb-sidebar__widen");
+    this.widenBtn   = this.el.querySelector(".wfb-sidebar__widen");
     this.widenBtn.addEventListener("click", () => this.toggleWide());
     this.el.querySelector(".wfb-sidebar__close").addEventListener("click", () => this.close());
-    this.el.querySelector('[data-act="cancel"]').addEventListener("click", () => this.close());
-    this._saveBtn = this.el.querySelector('[data-act="save"]');
   }
 
   mount(parent) { parent.appendChild(this.el); }
@@ -54,7 +51,7 @@ export class Sidebar {
     this.widenBtn.title = next ? this._t("sidebar_shrink") : this._t("sidebar_expand");
   }
 
-  open({ title, content, extras, status, onSave, hideFooter, onClose }) {
+  open({ title, content, extras, status, onCommit, onClose }) {
     this.titleEl.textContent = title || "";
     this.bodyEl.innerHTML = "";
     if (content instanceof Node) this.bodyEl.appendChild(content);
@@ -63,28 +60,44 @@ export class Sidebar {
 
     if (status) {
       this.statusEl.style.display = "";
-      this.statusInput.checked = !!status.enabled;
+      const isActive = ("value" in status) ? status.value !== "inactive" : !!status.enabled;
+      this.statusInput.checked = isActive;
+      const statusLabel = this.statusEl.querySelector(".wfb-sidebar__status-label");
+      if (statusLabel) statusLabel.textContent = isActive ? this._t("status_active") : this._t("status_inactive");
       if (this.statusInput._h) this.statusInput.removeEventListener("change", this.statusInput._h);
-      const h = () => status.onToggle && status.onToggle(this.statusInput.checked);
+      const h = () => {
+        const newActive = this.statusInput.checked;
+        const newStatus = newActive ? "active" : "inactive";
+        if (statusLabel) statusLabel.textContent = newActive ? this._t("status_active") : this._t("status_inactive");
+        status.onToggle && status.onToggle(newStatus);
+      };
       this.statusInput._h = h;
       this.statusInput.addEventListener("change", h);
     } else {
       this.statusEl.style.display = "none";
     }
 
-    this.footerEl.style.display = hideFooter ? "none" : "";
-    if (this._saveBtn._h) this._saveBtn.removeEventListener("click", this._saveBtn._h);
-    const handler = () => { onSave && onSave(); };
-    this._saveBtn._h = handler;
-    this._saveBtn.addEventListener("click", handler);
-
+    this._onCommit = onCommit;
     this._onClose = onClose;
     this.el.classList.add("wfb-sidebar--open");
+  }
+
+  commit() {
+    if (!this.el.classList.contains("wfb-sidebar--open") || typeof this._onCommit !== "function") {
+      return false;
+    }
+    this._onCommit();
+    return true;
   }
 
   close() {
     if (!this.el.classList.contains("wfb-sidebar--open")) return;
     this.el.classList.remove("wfb-sidebar--open");
-    if (this._onClose) { const cb = this._onClose; this._onClose = null; cb(); }
+    this._onCommit = null;
+    if (this._onClose) {
+      const callback = this._onClose;
+      this._onClose = null;
+      callback();
+    }
   }
 }

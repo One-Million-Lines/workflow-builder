@@ -29,7 +29,12 @@ export class WorkflowState {
   _normalizeStep(step) {
     const s = deepClone(step);
     if (!s.id) s.id = uid("step");
-    if (!("enabled" in s)) s.enabled = true;
+    // Canonical status field: "active" | "inactive"
+    // Back-compat: old docs may have enabled:boolean instead of status
+    if (s.status !== "active" && s.status !== "inactive") {
+      s.status = (s.enabled === false) ? "inactive" : "active";
+    }
+    s.enabled = s.status === "active"; // keep in sync for backward compat
     if (!s.config) s.config = {};
     if (s.type === "condition") {
       s.branches = s.branches || { yes: [], no: [] };
@@ -67,6 +72,27 @@ export class WorkflowState {
       ...patch,
       config: { ...this.workflow.trigger.config, ...(patch.config || {}) },
     };
+    this._touch();
+  }
+
+  /**
+   * Replace the trigger type + config entirely (used for live-sync when the
+   * user changes the trigger type mid-edit).
+   */
+  setTriggerFields(type, config) {
+    this.workflow.trigger = {
+      ...this.workflow.trigger,
+      type,
+      config: deepClone(config || {}),
+    };
+    this._touch();
+  }
+
+  /**
+   * Restore a previously-saved trigger snapshot (cancel rollback).
+   */
+  replaceTrigger(trigger) {
+    this.workflow.trigger = deepClone(trigger);
     this._touch();
   }
 
@@ -157,12 +183,30 @@ export class WorkflowState {
     return found.index < found.parentList.length - 1;
   }
 
+  /**
+   * Restore a previously-saved step snapshot (used for cancel rollback in live-sync).
+   */
+  replaceStep(stepId, step) {
+    const found = this.findStep(stepId);
+    if (!found) return false;
+    found.parentList[found.index] = deepClone(step);
+    this._touch();
+    return true;
+  }
+
   updateStep(stepId, patch) {
     const found = this.findStep(stepId);
     if (!found) return false;
     const s = found.step;
     if (patch.config) s.config = { ...s.config, ...patch.config };
-    if ("enabled" in patch) s.enabled = patch.enabled;
+    if ("status" in patch) {
+      s.status = patch.status === "inactive" ? "inactive" : "active";
+      s.enabled = s.status === "active";
+    }
+    if ("enabled" in patch) { // backward compat
+      s.enabled = !!patch.enabled;
+      s.status = s.enabled ? "active" : "inactive";
+    }
     if ("conditions" in patch) {
       const c = patch.conditions;
       if (Array.isArray(c)) s.conditions = { match: "all", items: c };

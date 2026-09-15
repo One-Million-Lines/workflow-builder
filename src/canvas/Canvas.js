@@ -68,6 +68,8 @@ export class Canvas {
 
   setSelected(id) { this.selectedId = id; }
   setErrorIds(ids) { this.errors = new Set(ids || []); }
+  /** Inform the canvas which step types are handled by plugins (for visual indicator). */
+  setPluginTypes(types) { this._pluginTypes = new Set(types || []); }
 
   /**
    * Schedule a full structural re-render.
@@ -134,9 +136,8 @@ export class Canvas {
       // Sync status dot title
       const statusDot = node.querySelector(".wfb-node__status");
       if (statusDot) {
-        statusDot.title = node.classList.contains("wfb-node--disabled")
-          ? this._t("disabled")
-          : this._t("enabled");
+        const isDisabled = node.classList.contains("wfb-node--disabled");
+        statusDot.title = isDisabled ? this._t("status_inactive") : this._t("status_active");
       }
     });
   }
@@ -166,9 +167,12 @@ export class Canvas {
 
   _renderStepList(container, steps) {
     for (const step of steps) {
+      // hasPlugin: step types that have a registered module are "plugin-managed"
+      const hasPlugin = this._pluginTypes ? this._pluginTypes.has(step.type) : false;
       const stepEl = renderStepNode(step, this.stepRegistry.get(step.type), {
         selected: this.selectedId === step.id,
         hasError: this.errors.has(step.id),
+        hasPlugin,
         t: this._t,
       });
       // No inline listeners — delegation handles all interaction

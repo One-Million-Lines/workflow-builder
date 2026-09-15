@@ -186,6 +186,8 @@ export class WorkflowBuilder extends EventEmitter {
   getWorkflow(): Workflow;
   setWorkflow(json: Workflow | string): void;
   validate(): ValidationResult;
+  isSidebarOpen(): boolean;
+  commitSidebar(): boolean;
   export(): Workflow;
   import(json: Workflow | string): void;
 
@@ -207,6 +209,8 @@ export interface WorkflowBuilderInstance {
   getValue(): Workflow;
   setValue(value: Workflow | string): WorkflowBuilderInstance;
   validate(): ValidationResult;
+  isSidebarOpen(): boolean;
+  commitAndGetWorkflow(): Workflow;
   on(event: WorkflowBuilderEvent | string, handler: (payload?: unknown) => void): () => void;
   destroy(): void;
 }

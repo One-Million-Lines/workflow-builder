@@ -7,6 +7,8 @@ export default {
   enabled: "Habilitado",
   disabled: "Deshabilitado",
   enable_disable: "Habilitar/Deshabilitar",
+  status_active: "Activo",
+  status_inactive: "Inactivo",
   delete: "Eliminar",
   config_incomplete: "Configuración incompleta",
   add_step: "Añadir paso",

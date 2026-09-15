@@ -4,7 +4,18 @@ All notable changes to this package are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/) format.
 
-## [Unreleased]
+## [0.2.5] — 2026-09-15
+
+### Fixed
+- The add-step menu now flips above its button near the bottom edge and scrolls when space is limited.
+
+### Changed
+- Documented host-controlled step lists through the existing `registries` and `extensions` options.
+
+## [0.2.4] — 2026-09-15
+
+### Fixed
+- `commitAndGetWorkflow()` now flushes the open trigger or step editor before returning the workflow JSON.
 
 ## [0.2.3] — 2026-09-14
 
@@ -15,6 +26,7 @@ This project adheres to [Semantic Versioning](https://semver.org/) and the
 
 ### Added
 - **Step-level plugins** — `WorkflowBuilder` now checks `modules[step.type]` before opening the standard sidebar form. If a callable is found it is invoked with `{ config, step, onSave }`, allowing host applications to wire in their own editors (React components, modals, etc.) without touching the sidebar system.
+- **Step status** — Each step / action in the workflow has a status flag
 
 ## [0.2.2] — 2026-09-14
 

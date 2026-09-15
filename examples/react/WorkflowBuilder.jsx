@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { createWorkflowBuilder } from "@one-million-lines/workflow-builder";
 import "@one-million-lines/workflow-builder/styles.css";
 
-export function WorkflowBuilder({ initialValue, extensions, dataProvider, onChange }) {
+export function WorkflowBuilder({ initialValue, registries, extensions, dataProvider, onChange }) {
   const hostRef = useRef(null);
   const instanceRef = useRef(null);
 
@@ -15,6 +15,7 @@ export function WorkflowBuilder({ initialValue, extensions, dataProvider, onChan
     const builder = createWorkflowBuilder({
       target: hostRef.current,
       initialValue,
+      registries,
       extensions,
       dataProvider,
       onChange,

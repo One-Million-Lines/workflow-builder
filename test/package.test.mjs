@@ -120,8 +120,89 @@ test("multiple instances coexist and clean up independently", async () => {
   b2.unmount();
 });
 
+test("commitAndGetWorkflow flushes trigger edits and the result can be reloaded", async () => {
+  installDom();
+  const { createWorkflowBuilder } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  const builder = createWorkflowBuilder({
+    target: host,
+    initialValue: {
+      trigger: { type: "api_request", config: { endpoint: "before" } },
+      steps: [],
+    },
+  });
+  await builder.ready;
+  builder.instance._openTriggerEditor();
+
+  const endpoint = host.querySelector('input[placeholder="my_workflow_endpoint"]');
+  assert.ok(endpoint, "trigger endpoint input is rendered");
+  endpoint.value = "after";
+  // The field updates its form state, but this non-bubbling event deliberately
+  // bypasses the editor's normal auto-commit listener.
+  endpoint.dispatchEvent(new Event("input", { bubbles: false }));
+  assert.equal(builder.getValue().trigger.config.endpoint, "before");
+
+  const committed = builder.commitAndGetWorkflow();
+  assert.equal(committed.trigger.config.endpoint, "after");
+
+  const reloadedHost = document.createElement("div");
+  document.body.appendChild(reloadedHost);
+  const reloaded = createWorkflowBuilder({ target: reloadedHost, initialValue: committed });
+  await reloaded.ready;
+  assert.equal(reloaded.getValue().trigger.config.endpoint, "after");
+
+  builder.destroy();
+  reloaded.destroy();
+});
+
+test("host registries control the step menu and it flips inside the lower viewport edge", async () => {
+  installDom();
+  const { WorkflowBuilder, defaultDefinitions } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  const enabledTypes = new Set(["email", "webpush", "exit"]);
+  const registries = {
+    ...defaultDefinitions,
+    steps: {
+      ...defaultDefinitions.steps,
+      steps: defaultDefinitions.steps.steps.filter(({ type }) => enabledTypes.has(type)),
+    },
+  };
+  const builder = new WorkflowBuilder({
+    container: host,
+    workflow: { trigger: { type: null, config: {} }, steps: [] },
+    registries,
+  });
+  await builder.mount();
+
+  const anchor = document.createElement("button");
+  builder._root.appendChild(anchor);
+  builder._root.getBoundingClientRect = () => ({
+    top: 0, right: 600, bottom: 300, left: 0, width: 600, height: 300,
+  });
+  anchor.getBoundingClientRect = () => ({
+    top: 270, right: 320, bottom: 290, left: 300, width: 20, height: 20,
+  });
+  Object.defineProperty(builder._addMenu.el, "offsetWidth", { configurable: true, value: 300 });
+  Object.defineProperty(builder._addMenu.el, "offsetHeight", { configurable: true, value: 260 });
+
+  builder._addMenu.openAt(anchor, { parentId: null });
+
+  const menuTypes = Array.from(builder._addMenu.el.querySelectorAll("[data-type]"), (el) => el.dataset.type);
+  assert.deepEqual(menuTypes, ["email", "webpush", "exit"]);
+  assert.equal(builder._addMenu.el.dataset.placement, "top");
+  assert.ok(parseFloat(builder._addMenu.el.style.top) < 270, "menu opens above its anchor");
+  assert.ok(parseFloat(builder._addMenu.el.style.maxHeight) <= 260, "menu height is capped to visible space");
+
+  builder.unmount();
+});
+
 test("shipped stylesheet is non-empty and scoped to .wfb- classes", () => {
   const css = readFileSync(resolve(here, "../dist/styles.css"), "utf8");
   assert.ok(css.length > 0);
   assert.ok(css.includes(".wfb-root"), "expected scoped class names");
+  assert.match(css, /\.wfb-add-menu\s*\{[^}]*overflow-y:\s*auto/s, "step menu is scrollable");
 });

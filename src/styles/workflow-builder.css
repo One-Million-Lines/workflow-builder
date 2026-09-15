@@ -45,7 +45,11 @@
 }
 
 /* ── Embedded isolation reset ─────────────────────────────────────────────── */
-/* Prevents host-app CSS from bleeding into the builder regardless of context. */
+/* Prevents host-app CSS from bleeding in. IMPORTANT: these element+class
+   selectors (specificity 0,1,1) would override our .wfb-input / .wfb-btn
+   class rules (specificity 0,1,0), so we MUST NOT set border, padding, or
+   background here — those are owned entirely by the .wfb-* component classes.
+   We only reset safe inherited properties and clear host margins/display.      */
 
 .wfb-root *,
 .wfb-root ::before,
@@ -53,7 +57,7 @@
   box-sizing: inherit;
 }
 
-/* Headings: host CSS often changes font-size/margin on h1–h6 */
+/* Headings */
 .wfb-root h1, .wfb-root h2, .wfb-root h3,
 .wfb-root h4, .wfb-root h5, .wfb-root h6 {
   font-size: inherit;
@@ -64,47 +68,105 @@
   color: inherit;
 }
 
-/* Buttons: host frameworks (Bootstrap, Tailwind, etc.) frequently restyle these */
+/* Buttons — only safe resets; border/background/padding left to .wfb-btn etc. */
 .wfb-root button {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
   margin: 0;
   font: inherit;
   color: inherit;
   cursor: pointer;
   line-height: inherit;
-  text-align: left;
-  box-shadow: none;
-  outline: none;
 }
 
-/* Form controls */
+/* Form controls — only safe resets; border/padding/background left to .wfb-input */
 .wfb-root input,
 .wfb-root select,
 .wfb-root textarea {
-  -webkit-appearance: none;
-  appearance: none;
-  background: white;
-  border: none;
-  border-radius: 0;
-  padding: 0;
   margin: 0;
   font: inherit;
   color: inherit;
-  outline: none;
-  box-shadow: none;
   box-sizing: border-box;
+  /* Restore native field appearance so browser defaults are visible as a base */
+  -webkit-appearance: auto;
+  appearance: auto;
 }
 
-/* Misc block elements that may carry host margins */
+/* Misc */
 .wfb-root p  { margin: 0; padding: 0; }
 .wfb-root ul, .wfb-root ol { list-style: none; margin: 0; padding: 0; }
 .wfb-root a  { color: inherit; text-decoration: none; }
 .wfb-root label { font-weight: inherit; margin: 0; }
+
+/* ── Component-level overrides: higher specificity (.wfb-root + class = 0,2,0)
+   so these beat any remaining element-level resets from the host.              */
+.wfb-root .wfb-input {
+  border: 1px solid var(--wfb-node-border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--wfb-text);
+  outline: none;
+  box-shadow: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.wfb-root .wfb-input:focus {
+  border-color: var(--wfb-primary);
+  box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+}
+/* Show a chevron-down arrow on select elements */
+.wfb-root select.wfb-input {
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px 6px;
+  cursor: pointer;
+}
+.wfb-root .wfb-input--textarea { min-height: 90px; resize: vertical; }
+
+/* Buttons */
+.wfb-root .wfb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--wfb-node-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--wfb-text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.wfb-root .wfb-btn:hover { background: #f6f7f9; }
+.wfb-root .wfb-btn--primary {
+  background: var(--wfb-primary);
+  border-color: var(--wfb-primary);
+  color: #fff;
+}
+.wfb-root .wfb-btn--primary:hover { background: #2c6bb1; border-color: #2c6bb1; }
+.wfb-root .wfb-btn--ghost { border-color: transparent; background: transparent; }
+.wfb-root .wfb-btn--ghost:hover { background: #f3f4f6; border-color: #e5e7eb; }
+
+.wfb-root .wfb-iconbtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--wfb-muted);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.wfb-root .wfb-iconbtn:hover { background: #f3f4f6; color: var(--wfb-text); }
 
 /* ---------- Canvas ---------- */
 .wfb-canvas {
@@ -149,9 +211,34 @@
   border-color: var(--wfb-node-selected);
   box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.18);
 }
-.wfb-node--disabled { opacity: 0.55; }
+.wfb-node--disabled { opacity: 0.55; filter: grayscale(0.3); }
 .wfb-node--error { border-color: var(--wfb-danger); }
 .wfb-node--trigger { background: #eef6ff; border-color: #b8dafc; }
+.wfb-node--plugin { border-style: dashed; }
+
+/* ── Status toggle (Active / Inactive) ── */
+.wfb-status-toggle {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.wfb-status-toggle--active {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+.wfb-status-toggle--inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+.wfb-status-toggle:hover { opacity: 0.75; }
 
 .wfb-node__badge {
   display: inline-block;
@@ -192,22 +279,21 @@
   transition: opacity 0.1s;
 }
 .wfb-node:hover .wfb-node__actions { opacity: 1; }
-.wfb-iconbtn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--wfb-muted);
-  padding: 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.wfb-iconbtn:hover { background: #f3f4f6; color: var(--wfb-text); }
+/* .wfb-iconbtn — defined in the .wfb-root .wfb-iconbtn scoped block above */
 .wfb-node__error-flag {
   position: absolute; top: -6px; right: -6px;
   width: 18px; height: 18px;
   background: var(--wfb-danger); color: white;
   border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
+}
+.wfb-node__plugin-badge {
+  position: absolute; top: -6px; left: -6px;
+  width: 16px; height: 16px;
+  background: var(--wfb-primary); color: white;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  opacity: 0.8;
 }
 
 /* ---------- Connector ---------- */
@@ -279,6 +365,8 @@
   box-shadow: var(--wfb-shadow-lg);
   padding: 12px;
   min-width: 280px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .wfb-add-menu__header {
   font-size: 12px;
@@ -335,56 +423,21 @@
   color: var(--wfb-muted); padding: 4px;
 }
 .wfb-sidebar__body { flex: 1; overflow-y: auto; padding: var(--wfb-sidebar-padding); }
-.wfb-sidebar__footer {
-  display: flex; justify-content: flex-end; gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--wfb-node-border);
-}
+/* .wfb-sidebar__footer removed — sidebar no longer has Save/Cancel buttons */
 
 /* ---------- Buttons ---------- */
-.wfb-btn {
-  border: 1px solid var(--wfb-node-border);
-  background: white;
-  padding: 7px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  font-weight: 500;
-}
-.wfb-btn:hover { background: #f6f7f9; }
-.wfb-btn--primary {
-  background: var(--wfb-primary);
-  border-color: var(--wfb-primary);
-  color: white;
-}
-.wfb-btn--primary:hover { background: #2c6bb1; }
-.wfb-btn--ghost { border-color: transparent; }
+/* .wfb-btn / .wfb-btn--primary / .wfb-btn--ghost — defined in the
+   .wfb-root .wfb-btn scoped block above (higher specificity wins)  */
 
 /* ---------- Form ---------- */
-.wfb-form { display: flex; flex-direction: column; gap: 14px; }
+.wfb-form { display: flex; flex-direction: column; gap: 10px; }
 .wfb-field { display: flex; flex-direction: column; gap: 6px; }
 .wfb-field__label { font-size: 12px; font-weight: 600; color: var(--wfb-text); }
 .wfb-field__required { color: var(--wfb-danger); }
 .wfb-field__error { font-size: 11px; color: var(--wfb-danger); min-height: 1em; }
-.wfb-input {
-  border: 1px solid var(--wfb-node-border);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 13px;
-  font-family: inherit;
-  background: white;
-  color: var(--wfb-text);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  width: 100%;
-  box-sizing: border-box;
-}
-.wfb-input:focus {
-  border-color: var(--wfb-primary);
-  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
-}
-.wfb-input--textarea { min-height: 90px; resize: vertical; }
-.wfb-input--toggle {
+/* .wfb-input — defined in the .wfb-root .wfb-input scoped block above */
+/* Modifier variants that extend the base .wfb-root .wfb-input: */
+.wfb-root .wfb-input--toggle {
   flex-direction: row;
   display: inline-flex;
   align-items: center;
@@ -393,11 +446,18 @@
   padding: 0;
   background: transparent;
 }
-.wfb-input--radio { display: flex; flex-direction: column; gap: 6px; border: none; padding: 0; background: transparent; }
+.wfb-root .wfb-input--radio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+.wfb-root .wfb-input--mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12px; }
+.wfb-root .wfb-input--invalid { border-color: var(--wfb-danger); }
 
 .wfb-empty { color: var(--wfb-muted); font-size: 13px; padding: 8px; }
-
-/* ---------- Info / Divider / Repeater / JSON ---------- */
 .wfb-info {
   background: #f5f9ff;
   border-left: 3px solid var(--wfb-primary);
@@ -425,8 +485,7 @@
   text-transform: uppercase;
   color: var(--wfb-muted);
 }
-.wfb-input--mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12px; }
-.wfb-input--invalid { border-color: var(--wfb-danger); }
+/* old low-specificity .wfb-input--mono / --invalid removed; now in .wfb-root block above */
 
 .wfb-repeater {
   display: flex;

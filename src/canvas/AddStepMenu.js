@@ -26,11 +26,54 @@ export class AddStepMenu {
     this._anchor = anchor;
     this._context = context;
     this._render();
+
+    // Reveal the menu off-screen first so it can be measured before choosing
+    // whether it fits above or below the add button.
+    this.el.style.display = "block";
+    this.el.style.visibility = "hidden";
+    this.el.style.top = "0";
+    this.el.style.left = "0";
+    this.el.style.maxWidth = "";
+    this.el.style.maxHeight = "";
+
     const rect = anchor.getBoundingClientRect();
     const parentRect = this.el.parentElement.getBoundingClientRect();
-    this.el.style.display = "block";
-    this.el.style.top = `${rect.bottom - parentRect.top + 8}px`;
-    this.el.style.left = `${rect.left - parentRect.left + rect.width / 2 - this.el.offsetWidth / 2}px`;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const margin = 8;
+    const gap = 8;
+    const bounds = {
+      top: Math.max(parentRect.top, 0) + margin,
+      right: Math.min(parentRect.right, viewportWidth) - margin,
+      bottom: Math.min(parentRect.bottom, viewportHeight) - margin,
+      left: Math.max(parentRect.left, 0) + margin,
+    };
+
+    // Keep wide menus inside narrow embeds before measuring their final size.
+    this.el.style.maxWidth = `${Math.max(0, bounds.right - bounds.left)}px`;
+    const menuWidth = Math.min(this.el.offsetWidth, Math.max(0, bounds.right - bounds.left));
+    const menuHeight = this.el.offsetHeight;
+    const spaceBelow = Math.max(0, bounds.bottom - rect.bottom - gap);
+    const spaceAbove = Math.max(0, rect.top - gap - bounds.top);
+    const opensAbove = menuHeight > spaceBelow && spaceAbove > spaceBelow;
+    const availableHeight = opensAbove ? spaceAbove : spaceBelow;
+    const renderedHeight = Math.min(menuHeight, availableHeight);
+
+    const desiredTop = opensAbove
+      ? rect.top - gap - renderedHeight
+      : rect.bottom + gap;
+    const maxTop = Math.max(bounds.top, bounds.bottom - renderedHeight);
+    const top = Math.min(Math.max(desiredTop, bounds.top), maxTop);
+
+    const desiredLeft = rect.left + rect.width / 2 - menuWidth / 2;
+    const maxLeft = Math.max(bounds.left, bounds.right - menuWidth);
+    const left = Math.min(Math.max(desiredLeft, bounds.left), maxLeft);
+
+    this.el.dataset.placement = opensAbove ? "top" : "bottom";
+    this.el.style.maxHeight = `${availableHeight}px`;
+    this.el.style.top = `${top - parentRect.top}px`;
+    this.el.style.left = `${left - parentRect.left}px`;
+    this.el.style.visibility = "visible";
     this._open = true;
   }
 

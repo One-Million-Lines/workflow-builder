@@ -65,6 +65,9 @@ export class WorkflowBuilder extends EventEmitter {
       triggerRegistry: this._reg.triggers,
       t: this._t,
     });
+    // Tell the canvas which step types have plugin modules so they get a visual badge.
+    this._canvas.setPluginTypes(Object.keys(this._modules));
+
     this._addMenu = new AddStepMenu(this._reg.steps, (type, ctx) => this._handleAddStep(type, ctx), this._t);
     this._sidebar = new Sidebar(this._t);
 
@@ -106,18 +109,17 @@ export class WorkflowBuilder extends EventEmitter {
     return result;
   }
   /**
-   * Programmatically trigger the sidebar's Save button when the sidebar is
-   * open. This commits any in-progress step/trigger form so that a subsequent
-   * `getWorkflow()` call returns the fully up-to-date workflow.
-   * Returns `true` when a save was triggered, `false` when nothing was open.
+   * Returns true if the sidebar is currently open.
    */
-  commitSidebar() {
-    if (this._sidebar?.el.classList.contains("wfb-sidebar--open")) {
-      this._sidebar._saveBtn?.click();
-      return true;
-    }
-    return false;
+  isSidebarOpen() {
+    return this._sidebar?.el.classList.contains("wfb-sidebar--open") || false;
   }
+
+  /** Flush the currently-open form into workflow state before a host save. */
+  commitSidebar() { return this._sidebar?.commit() ?? false; }
+
+  /** @deprecated No longer needed with auto-commit. */
+  closeSidebarKeepState() { this._sidebar?.close(); }
   export() { return WorkflowSerializer.export(this._state.getWorkflow()); }
   import(json) { this.setWorkflow(json); }
   addStep(parentStepId, stepType, position = "after") {
@@ -198,7 +200,8 @@ export class WorkflowBuilder extends EventEmitter {
       const id = e.detail.id;
       const found = this._state.findStep(id);
       if (!found) return;
-      this.updateStep(id, { enabled: !found.step.enabled });
+      const newStatus = found.step.status === "inactive" ? "active" : "inactive";
+      this.updateStep(id, { status: newStatus });
     });
   }
 
@@ -282,21 +285,28 @@ export class WorkflowBuilder extends EventEmitter {
     renderTriggerForm(wf.trigger.type);
     select.addEventListener("change", () => renderTriggerForm(select.value));
 
+    // ── Auto-commit ─────────────────────────────────────────────────────────
+    // Every form change is immediately committed to the workflow state and
+    // emitted via workflow:change so the host React component always has the
+    // latest values — no Save button needed.
+    const autoCommit = () => {
+      const type = select.value;
+      if (!type) return;
+      const config = form ? form.getValues() : {};
+      // Full replacement (not merge) so switching trigger types clears stale config.
+      this._state.setTriggerFields(type, config);
+      const result = this._validator.validate(this._state.getWorkflow());
+      this._canvas.setErrorIds(result.errors.filter((e) => e.id).map((e) => e.id));
+      this._canvas.render(this._state.getWorkflow());
+      this._emitChange();
+    };
+    wrapper.addEventListener("input",  autoCommit);
+    wrapper.addEventListener("change", autoCommit);
+
     this._sidebar.open({
       title: "Configure trigger",
       content: wrapper,
-      onSave: () => {
-        const type = select.value;
-        if (!type) { alert(this._t("trigger_type_required")); return; }
-        let config = {};
-        if (form) {
-          const v = form.validate();
-          if (!v.valid) return;
-          config = form.getValues();
-        }
-        this.updateTrigger({ type, config });
-        this._sidebar.close();
-      },
+      onCommit: autoCommit,
     });
   }
 
@@ -304,23 +314,22 @@ export class WorkflowBuilder extends EventEmitter {
     const found = this._state.findStep(stepId);
     if (!found) return;
     const step = found.step;
+
     this._canvas.setSelected(stepId);
     this._render(false);
     this.emit("step:select", { id: stepId, kind: "step" });
 
     // Step plugin: if a module matching the step type is registered, delegate to
-    // it instead of opening the standard form sidebar. The plugin receives the
-    // current config and an onSave callback. This allows host apps to wire in
-    // their own editors (e.g. an email builder React component) without touching
-    // the sidebar form system.
+    // it instead of opening the standard form sidebar.
     const plugin = this._modules[step.type];
     if (typeof plugin === "function") {
       plugin({
         config: { ...(step.config || {}) },
-        step: { id: step.id, type: step.type, title: step.title, enabled: step.enabled },
+        step: { id: step.id, type: step.type, title: step.title, enabled: step.enabled, status: step.status },
         onSave: (newConfig) => {
           this.updateStep(stepId, { config: newConfig });
         },
+        onClose: () => {},
       });
       return;
     }
@@ -329,12 +338,14 @@ export class WorkflowBuilder extends EventEmitter {
     if (!def) return;
     const schema = this._reg.steps.getSchema(step.type);
 
-    const status = step.type === "exit" ? null : {
-      enabled: !!step.enabled,
-      onToggle: (enabled) => this.updateStep(stepId, { enabled }),
+    const statusObj = step.type === "exit" ? null : {
+      value: step.status || "active",
+      onToggle: (newStatus) => {
+        this.updateStep(stepId, { status: newStatus }); // immediately committed + emits
+      },
     };
 
-    // Build "extras": step-level conditions panel (skip for trigger/condition/exit and when shared schema absent)
+    // Build "extras": step-level conditions panel
     let extrasNode = null;
     let extrasForm = null;
     const condSchema = this._reg.shared?.conditions;
@@ -351,7 +362,6 @@ export class WorkflowBuilder extends EventEmitter {
       help.textContent = this._t("conditions_help");
       extrasNode.appendChild(help);
 
-      // Normalise step.conditions into { match, items }
       const initial = (step.conditions && typeof step.conditions === "object" && !Array.isArray(step.conditions))
         ? { match: step.conditions.match === "any" ? "any" : "all", items: Array.isArray(step.conditions.items) ? step.conditions.items : [] }
         : { match: "all", items: Array.isArray(step.conditions) ? step.conditions : [] };
@@ -378,32 +388,43 @@ export class WorkflowBuilder extends EventEmitter {
       const div = document.createElement("div");
       div.className = "wfb-empty";
       div.textContent = `${def.label}: ${def.description || this._t("no_configuration")}`;
-      this._sidebar.open({ title: def.label, content: div, hideFooter: true, status });
+      this._sidebar.open({ title: def.label, content: div, status: statusObj });
       return;
     }
 
     const form = renderForm(schema, step.config || {}, this._formCtx());
+
+    // ── Auto-commit ──────────────────────────────────────────────────────────
+    // Every change to the config or conditions is immediately committed to the
+    // workflow state and emitted via workflow:change.
+    const autoCommit = () => {
+      const patch = { config: form.getValues() };
+      if (extrasForm) {
+        const group = extrasForm.getValues().conditions || { match: "all", items: [] };
+        patch.conditions = {
+          match: group.match === "any" ? "any" : "all",
+          items: Array.isArray(group.items) ? group.items : [],
+        };
+      }
+      this._state.updateStep(stepId, patch);
+      const result = this._validator.validate(this._state.getWorkflow());
+      this._canvas.setErrorIds(result.errors.filter((e) => e.id).map((e) => e.id));
+      this._canvas.render(this._state.getWorkflow());
+      this._emitChange();
+    };
+    form.element.addEventListener("input",  autoCommit);
+    form.element.addEventListener("change", autoCommit);
+    if (extrasForm) {
+      extrasForm.element.addEventListener("input",  autoCommit);
+      extrasForm.element.addEventListener("change", autoCommit);
+    }
+
     this._sidebar.open({
       title: def.label,
       content: form.element,
       extras: extrasNode,
-      status,
-      onSave: () => {
-        const v = form.validate();
-        if (!v.valid) return;
-        const patch = { config: form.getValues() };
-        if (extrasForm) {
-          const ev = extrasForm.validate();
-          if (!ev.valid) return;
-          const group = extrasForm.getValues().conditions || { match: "all", items: [] };
-          patch.conditions = {
-            match: group.match === "any" ? "any" : "all",
-            items: Array.isArray(group.items) ? group.items : [],
-          };
-        }
-        this.updateStep(stepId, patch);
-        this._sidebar.close();
-      },
+      status: statusObj,
+      onCommit: autoCommit,
     });
   }
 }

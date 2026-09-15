@@ -87,6 +87,31 @@ await builder.ready;                  // mounting is async
 Registry definitions are **bundled** — the builder works with zero hosting. You
 can still override them by passing `registries` (inline objects or URLs).
 
+To choose which bundled steps are available from a host application, pass a
+filtered registry without modifying the package:
+
+```js
+import {
+  createWorkflowBuilder,
+  defaultDefinitions,
+} from "@one-million-lines/workflow-builder";
+
+const enabledStepTypes = new Set(["email", "sms", "webpush", "delay", "condition", "exit"]);
+const registries = {
+  ...defaultDefinitions,
+  steps: {
+    ...defaultDefinitions.steps,
+    steps: defaultDefinitions.steps.steps.filter(({ type }) => enabledStepTypes.has(type)),
+  },
+};
+
+createWorkflowBuilder({ target: "#builder", registries });
+```
+
+Use `extensions` to add or replace step definitions with inline schemas. The
+same `registries` and `extensions` options can be forwarded through a framework
+wrapper, so the embedding application owns the available workflow-step list.
+
 ### Framework integration
 
 The package is framework-agnostic. Thin wrappers for each framework live in
@@ -183,6 +208,7 @@ Core methods:
 
 - `mount()` / `unmount()`
 - `getWorkflow()` / `setWorkflow(json)`
+- `commitSidebar()` — flush the currently open editor into workflow state
 - `export()` / `import(json)`
 - `validate()`
 - `addStep(parentStepId, stepType, position?)`
