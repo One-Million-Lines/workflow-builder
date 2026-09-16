@@ -38,12 +38,20 @@ export class WorkflowBuilder extends EventEmitter {
   }
 
   async mount() {
+    // Mounting waits for registry/schema loading. React StrictMode and other
+    // hosts may unmount during that await; a generation token prevents the
+    // abandoned instance from attaching itself afterwards.
+    const mountGeneration = (this._mountGeneration || 0) + 1;
+    this._mountGeneration = mountGeneration;
+
     this._container = typeof this._containerSel === "string"
       ? document.querySelector(this._containerSel)
       : this._containerSel;
     if (!this._container) throw new Error("WorkflowBuilder: container not found");
 
-    this._reg = await buildRegistries(this._registriesSrc, this._extensions);
+    const registries = await buildRegistries(this._registriesSrc, this._extensions);
+    if (this._mountGeneration !== mountGeneration) return;
+    this._reg = registries;
     this._state = new WorkflowState(this._initialWorkflow);
     this._validator = new WorkflowValidator(this._reg.steps, this._reg.triggers);
 
@@ -90,6 +98,7 @@ export class WorkflowBuilder extends EventEmitter {
   }
 
   unmount() {
+    this._mountGeneration = (this._mountGeneration || 0) + 1;
     this._canvas?.cancel();
     this._root?.remove();
   }
@@ -326,8 +335,14 @@ export class WorkflowBuilder extends EventEmitter {
       plugin({
         config: { ...(step.config || {}) },
         step: { id: step.id, type: step.type, title: step.title, enabled: step.enabled, status: step.status },
-        onSave: (newConfig) => {
-          this.updateStep(stepId, { config: newConfig });
+        // Plugins may pass an optional root-level step patch as the second
+        // argument. Apply config + root fields in one state mutation so hosts
+        // receive exactly one authoritative workflow:change event.
+        onSave: (newConfig, stepPatch = {}) => {
+          const rootPatch = stepPatch && typeof stepPatch === "object" && !Array.isArray(stepPatch)
+            ? stepPatch
+            : {};
+          this.updateStep(stepId, { ...rootPatch, config: newConfig });
         },
         onClose: () => {},
       });

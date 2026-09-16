@@ -29,16 +29,28 @@ export function createWorkflowBuilder(options = {}) {
   });
 
   let isMounted = false;
+  let mountPromise = null;
+  let lifecycleGeneration = 0;
 
   const api = {
     /** The underlying WorkflowBuilder instance. */
     instance,
     /** Mount into the target. Safe to call once; resolves when ready. */
     async mount() {
-      if (!isMounted) {
-        await instance.mount();
-        isMounted = true;
+      if (isMounted) return api;
+      if (!mountPromise) {
+        const generation = lifecycleGeneration;
+        mountPromise = instance.mount()
+          .then(() => {
+            if (generation === lifecycleGeneration) {
+              isMounted = !!instance._root?.isConnected;
+            }
+          })
+          .finally(() => {
+            if (generation === lifecycleGeneration) mountPromise = null;
+          });
       }
+      await mountPromise;
       return api;
     },
     /** Replace the current workflow document. */
@@ -74,8 +86,10 @@ export function createWorkflowBuilder(options = {}) {
     },
     /** Unmount and release the DOM. */
     destroy() {
+      lifecycleGeneration += 1;
       instance.unmount();
       isMounted = false;
+      mountPromise = null;
     },
   };
 

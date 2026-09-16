@@ -120,6 +120,40 @@ test("multiple instances coexist and clean up independently", async () => {
   b2.unmount();
 });
 
+test("destroying during async mount does not attach an abandoned builder", async () => {
+  installDom();
+  const { createWorkflowBuilder } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  const originalFetch = globalThis.fetch;
+  let releaseSteps;
+  globalThis.fetch = () => new Promise((resolve) => {
+    releaseSteps = () => resolve({
+      ok: true,
+      json: async () => ({ steps: [], _conditionsSchema: { fields: [] } }),
+    });
+  });
+
+  try {
+    const builder = createWorkflowBuilder({
+      target: host,
+      registries: {
+        steps: "/delayed-steps.json",
+        triggers: { triggers: [] },
+        actions: { actions: [] },
+      },
+    });
+    builder.destroy();
+    releaseSteps();
+    await builder.ready;
+
+    assert.equal(host.querySelector(".wfb-root"), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("commitAndGetWorkflow flushes trigger edits and the result can be reloaded", async () => {
   installDom();
   const { createWorkflowBuilder } = await import(distEsm);
@@ -155,6 +189,56 @@ test("commitAndGetWorkflow flushes trigger edits and the result can be reloaded"
 
   builder.destroy();
   reloaded.destroy();
+});
+
+test("plugin-managed steps remain in the workflow and save their config", async () => {
+  installDom();
+  const { createWorkflowBuilder } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  let pluginProps;
+  const changes = [];
+  const builder = createWorkflowBuilder({
+    target: host,
+    initialValue: {
+      trigger: { type: "api_request", config: { endpoint: "/start" } },
+      steps: [{ id: "existing-delay", type: "delay", config: { value: 1, unit: "hours" } }],
+    },
+    modules: {
+      email: (props) => { pluginProps = props; },
+    },
+    onChange: (workflow) => changes.push(workflow),
+  });
+  await builder.ready;
+
+  builder.instance._handleAddStep("email", { parentId: "existing-delay" });
+
+  const added = builder.getValue().steps[1];
+  assert.equal(added.type, "email");
+  assert.equal(pluginProps.step.id, added.id, "new plugin step is opened for editing");
+  assert.equal(changes.length, 1, "adding a plugin step emits exactly one change");
+  assert.equal(changes.at(-1).steps[1].id, added.id, "new step is emitted to the host");
+  assert.equal(
+    builder.commitAndGetWorkflow().steps[1].id,
+    added.id,
+    "an unconfigured plugin step is still part of the committed workflow",
+  );
+
+  const changesBeforePluginSave = changes.length;
+  pluginProps.onSave(
+    { template_id: 42 },
+    { condition: "random", conditionrules: { random_yes: 75, random_no: 25 } },
+  );
+  const committed = builder.commitAndGetWorkflow();
+  assert.equal(changes.length, changesBeforePluginSave + 1, "plugin save emits exactly one change");
+  assert.equal(committed.steps[0].id, "existing-delay", "existing steps are preserved");
+  assert.equal(committed.steps[1].id, added.id, "new plugin step is preserved");
+  assert.equal(committed.steps[1].config.template_id, 42);
+  assert.equal(committed.steps[1].condition, "random");
+  assert.deepEqual(committed.steps[1].conditionrules, { random_yes: 75, random_no: 25 });
+
+  builder.destroy();
 });
 
 test("host registries control the step menu and it flips inside the lower viewport edge", async () => {

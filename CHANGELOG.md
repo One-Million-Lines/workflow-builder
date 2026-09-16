@@ -4,6 +4,11 @@ All notable changes to this package are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/) format.
 
+## [0.2.6] — 2026-09-16
+
+### Fixed
+- New steps created by the plugins were being overwritten by a stale version of the workflow
+
 ## [0.2.5] — 2026-09-15
 
 ### Fixed

@@ -207,19 +207,25 @@ export class WorkflowState {
       s.enabled = !!patch.enabled;
       s.status = s.enabled ? "active" : "inactive";
     }
-    if ("conditions" in patch) {
-      const c = patch.conditions;
-      if (Array.isArray(c)) s.conditions = { match: "all", items: c };
-      else if (c && typeof c === "object") {
-        s.conditions = {
-          match: c.match === "any" ? "any" : "all",
-          items: Array.isArray(c.items) ? c.items : [],
-        };
-      } else {
-        s.conditions = { match: "all", items: [] };
-      }
-    }
+    
+    // if ("conditions" in patch) {
+    //   const c = patch.conditions;
+    //   if (Array.isArray(c)) s.conditions = { match: "all", items: c };
+    //   else if (c && typeof c === "object") {
+    //     s.conditions = {
+    //       match: c.match === "any" ? "any" : "all",
+    //       items: Array.isArray(c.items) ? c.items : [],
+    //     };
+    //   } else {
+    //     s.conditions = { match: "all", items: [] };
+    //   }
+    // }
+    // keep those here for now or they won't be updated correctly NOR added to the step
     if ("label" in patch) s.label = patch.label;
+    // Host-defined legacy condition fields used by step plugins. Keeping these
+    // in updateStep lets a plugin commit its config and root fields atomically.
+    if ("condition" in patch) s.condition = patch.condition ?? "";
+    if ("conditionrules" in patch) s.conditionrules = deepClone(patch.conditionrules ?? null);
     this._touch();
     return true;
   }
