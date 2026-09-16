@@ -37,6 +37,63 @@ export class WorkflowBuilder extends EventEmitter {
     this._modules[name] = factory;
   }
 
+  /**
+   * Report validation errors for a specific step from an external plugin.
+   *
+   * Plugins should call this whenever their configuration state changes so
+   * the canvas node reflects the current validity:
+   *   - Pass a non-empty array to mark the step as invalid.
+   *   - Pass an empty array (or call clearStepErrors) to mark it as valid.
+   *
+   * Error messages are shown in a tooltip on the error badge (⚠ icon).
+   *
+   * @param {string}   stepId  — The step's id (same as `step.id` passed to the plugin).
+   * @param {string[]} errors  — Human-readable error messages (empty = no errors).
+   */
+  setStepErrors(stepId, errors) {
+    if (!this._pluginErrors) this._pluginErrors = new Map();
+    if (Array.isArray(errors) && errors.length > 0) {
+      this._pluginErrors.set(stepId, errors);
+    } else {
+      this._pluginErrors.delete(stepId);
+    }
+    this._refreshErrors();
+  }
+
+  /**
+   * Clear any plugin-reported errors for a step, marking it as valid.
+   * @param {string} stepId
+   */
+  clearStepErrors(stepId) {
+    if (this._pluginErrors) this._pluginErrors.delete(stepId);
+    this._refreshErrors();
+  }
+
+  /** Recompute combined (validator + plugin) error state and update the canvas. */
+  _refreshErrors() {
+    if (!this._canvas) return;
+    const result = this._validator.validate(this._state.getWorkflow());
+    const validatorErrorIds = result.errors.filter((e) => e.id).map((e) => e.id);
+    const pluginErrorIds    = this._pluginErrors ? [...this._pluginErrors.keys()] : [];
+    const allErrorIds = [...new Set([...validatorErrorIds, ...pluginErrorIds])];
+
+    // Build combined error messages map for tooltips
+    const errorMessages = {};
+    result.errors.forEach((e) => {
+      if (e.id) {
+        errorMessages[e.id] = errorMessages[e.id] || [];
+        errorMessages[e.id].push(e.message);
+      }
+    });
+    if (this._pluginErrors) {
+      this._pluginErrors.forEach((msgs, id) => {
+        errorMessages[id] = [...(errorMessages[id] || []), ...msgs];
+      });
+    }
+
+    this._canvas.setErrorState(allErrorIds, errorMessages);
+  }
+
   async mount() {
     // Mounting waits for registry/schema loading. React StrictMode and other
     // hosts may unmount during that await; a generation token prevents the
@@ -92,8 +149,12 @@ export class WorkflowBuilder extends EventEmitter {
 
     this._wireCanvasEvents();
     // Initial render is synchronous so the workflow is visible immediately.
+    this._pluginErrors = new Map();
     const initResult = this._validator.validate(this._state.getWorkflow());
-    this._canvas.setErrorIds(initResult.errors.filter((e) => e.id).map((e) => e.id));
+    const initErrIds = initResult.errors.filter((e) => e.id).map((e) => e.id);
+    const initMsgs = {};
+    initResult.errors.forEach((e) => { if (e.id) { initMsgs[e.id] = initMsgs[e.id] || []; initMsgs[e.id].push(e.message); } });
+    this._canvas.setErrorState(initErrIds, initMsgs);
     this._canvas.renderNow(this._state.getWorkflow());
   }
 
@@ -112,7 +173,10 @@ export class WorkflowBuilder extends EventEmitter {
   }
   validate() {
     const result = this._validator.validate(this._state.getWorkflow());
-    this._canvas.setErrorIds(result.errors.filter((e) => e.id).map((e) => e.id));
+    const ids = result.errors.filter((e) => e.id).map((e) => e.id);
+    const msgs = {};
+    result.errors.forEach((e) => { if (e.id) { msgs[e.id] = msgs[e.id] || []; msgs[e.id].push(e.message); } });
+    this._canvas.setErrorState(ids, msgs);
     this._render(false);
     if (!result.valid) this.emit("validation:error", result);
     return result;
@@ -247,7 +311,22 @@ export class WorkflowBuilder extends EventEmitter {
     if (rebuild) {
       // Recompute validation flags (silent) then schedule a structural rebuild
       const result = this._validator.validate(this._state.getWorkflow());
-      this._canvas.setErrorIds(result.errors.filter((e) => e.id).map((e) => e.id));
+      const validatorIds = result.errors.filter((e) => e.id).map((e) => e.id);
+      const pluginIds    = this._pluginErrors ? [...this._pluginErrors.keys()] : [];
+      const allIds = [...new Set([...validatorIds, ...pluginIds])];
+      const errorMessages = {};
+      result.errors.forEach((e) => {
+        if (e.id) {
+          errorMessages[e.id] = errorMessages[e.id] || [];
+          errorMessages[e.id].push(e.message);
+        }
+      });
+      if (this._pluginErrors) {
+        this._pluginErrors.forEach((msgs, id) => {
+          errorMessages[id] = [...(errorMessages[id] || []), ...msgs];
+        });
+      }
+      this._canvas.setErrorState(allIds, errorMessages);
       this._canvas.render(this._state.getWorkflow()); // batched via rAF
     } else {
       // Only selection or error classes changed — no DOM rebuild needed
@@ -343,6 +422,16 @@ export class WorkflowBuilder extends EventEmitter {
             ? stepPatch
             : {};
           this.updateStep(stepId, { ...rootPatch, config: newConfig });
+        },
+        /**
+         * Report validation errors back to the canvas from inside a plugin.
+         * Call with a non-empty array to show the error badge; call with []
+         * (or omit) to clear. See `setStepErrors` for full documentation.
+         *
+         * @param {string[]} errors
+         */
+        onReportErrors: (errors) => {
+          this.setStepErrors(stepId, errors);
         },
         onClose: () => {},
       });

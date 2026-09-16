@@ -67,7 +67,17 @@ export class Canvas {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   setSelected(id) { this.selectedId = id; }
-  setErrorIds(ids) { this.errors = new Set(ids || []); }
+  /** @deprecated Use setErrorState instead. */
+  setErrorIds(ids) { this.errors = new Set(ids || []); this.errorMessages = {}; }
+  /**
+   * Set error IDs and associated messages for display in node tooltips.
+   * @param {string[]} ids     — step IDs with errors
+   * @param {Object}  messages — map of stepId → string[] of error messages
+   */
+  setErrorState(ids, messages = {}) {
+    this.errors = new Set(ids || []);
+    this.errorMessages = messages || {};
+  }
   /** Inform the canvas which step types are handled by plugins (for visual indicator). */
   setPluginTypes(types) { this._pluginTypes = new Set(types || []); }
 
@@ -117,19 +127,24 @@ export class Canvas {
       const id = node.dataset.id;
       const isSelected = this.selectedId === id;
       const hasError = this.errors.has(id);
+      const msgs = (this.errorMessages && this.errorMessages[id]) || [];
 
       node.classList.toggle("wfb-node--selected", isSelected);
       node.classList.toggle("wfb-node--error", hasError);
 
       // Sync error flag badge
       let flag = node.querySelector(".wfb-node__error-flag");
-      if (hasError && !flag) {
-        flag = document.createElement("div");
-        flag.className = "wfb-node__error-flag";
-        flag.title = this._t("config_incomplete");
-        flag.innerHTML = icon("alert", { size: 12 });
-        node.appendChild(flag);
-      } else if (!hasError && flag) {
+      if (hasError) {
+        if (!flag) {
+          flag = document.createElement("div");
+          flag.className = "wfb-node__error-flag";
+          flag.innerHTML = icon("alert", { size: 12 });
+          node.appendChild(flag);
+        }
+        const tooltip = msgs.length > 0 ? msgs.join("\n") : this._t("config_incomplete");
+        flag.title = tooltip;
+        flag.setAttribute("data-wfb-errors", tooltip);
+      } else if (flag) {
         flag.remove();
       }
 
@@ -169,9 +184,12 @@ export class Canvas {
     for (const step of steps) {
       // hasPlugin: step types that have a registered module are "plugin-managed"
       const hasPlugin = this._pluginTypes ? this._pluginTypes.has(step.type) : false;
+      const hasError  = this.errors.has(step.id);
+      const errorMsgs = (this.errorMessages && this.errorMessages[step.id]) || [];
       const stepEl = renderStepNode(step, this.stepRegistry.get(step.type), {
         selected: this.selectedId === step.id,
-        hasError: this.errors.has(step.id),
+        hasError,
+        errorMessages: errorMsgs,
         hasPlugin,
         t: this._t,
       });

@@ -229,6 +229,54 @@ Common events:
 
 The demo in `examples/vanilla/` also shows how to register an extension that adds a custom Slack notification step without changing the core definitions.
 
+## Step plugins and validation errors
+
+When a step type is registered as a module (plugin), the host application fully
+controls that step's editor UI.  Plugins receive an `onReportErrors` callback so
+they can feed validation state back to the canvas without implementing a separate
+error-checking mechanism.
+
+### Plugin contract
+
+Every module function is called with:
+
+```js
+{
+  config,           // shallow copy of step.config
+  step,             // { id, type, title, enabled, status }
+  onSave,           // (newConfig, rootPatch?) => void — commit the step
+  onReportErrors,   // (errors: string[]) => void — report validation errors
+  onClose,          // () => void — called when the editor is dismissed
+}
+```
+
+### Reporting errors from a plugin
+
+```js
+// Mark the step as invalid — red ⚠ badge appears; hover shows the messages.
+onReportErrors(["Please select a template."]);
+
+// Clear errors — step returns to normal visual state.
+onReportErrors([]);
+```
+
+### Reporting errors from outside the plugin call
+
+```js
+const builder = createWorkflowBuilder({ target, ... });
+await builder.ready;
+
+// Mark a specific step invalid with one or more messages.
+builder.setStepErrors("step_abc123", ["URL is required."]);
+
+// Clear errors later.
+builder.clearStepErrors("step_abc123");
+```
+
+Error messages are displayed in a hover tooltip on the red ⚠ badge that
+appears in the top-right corner of the step node, making it immediately clear
+to the user what needs to be fixed.
+
 ## Development
 
 ```bash

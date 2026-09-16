@@ -80,6 +80,25 @@ export function createWorkflowBuilder(options = {}) {
       instance.commitSidebar?.();
       return instance.getWorkflow();
     },
+    /**
+     * Report validation errors for a step from an external plugin.
+     * Pass a non-empty array to mark the step invalid (shows red ⚠ badge with
+     * hover tooltip listing the messages); pass [] to clear.
+     * @param {string}   stepId
+     * @param {string[]} errors
+     */
+    setStepErrors(stepId, errors) {
+      instance.setStepErrors(stepId, errors);
+      return api;
+    },
+    /**
+     * Clear plugin-reported errors for a step.
+     * @param {string} stepId
+     */
+    clearStepErrors(stepId) {
+      instance.clearStepErrors(stepId);
+      return api;
+    },
     /** Subscribe to a builder event; returns an unsubscribe function. */
     on(event, handler) {
       return instance.on(event, handler);

@@ -69,18 +69,21 @@ export class WorkflowValidator {
     const cfg = step.config || {};
     switch (step.type) {
       case "email": {
+        // A saved template_id is sufficient — subject/body live inside the template.
+        if (cfg.template_id) break;
         const tpl = cfg.template || {};
         const subject = cfg.subject || tpl.subject;
         const body    = cfg.content || tpl.html || tpl.text;
         if (!subject) errors.push("Email requires a subject.");
-        if (!cfg.template_id && !body) errors.push("Email requires a template or content.");
+        if (!body) errors.push("Email requires a template or content.");
         break;
       }
       case "sms":
-        if (!cfg.message) errors.push("SMS requires a message.");
+        // A saved template_id is sufficient — message lives inside the template.
+        if (!cfg.template_id && !cfg.message) errors.push("SMS requires a message or template.");
         break;
       case "whatsapp":
-        if (!cfg.message) errors.push("WhatsApp requires a message.");
+        if (!cfg.template_id && !cfg.message) errors.push("WhatsApp requires a message or template.");
         break;
       case "webpush":
         if (!cfg.title) errors.push("Webpush requires a title.");

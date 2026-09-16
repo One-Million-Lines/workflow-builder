@@ -4,6 +4,33 @@ All notable changes to this package are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/) format.
 
+## [0.3.0] — 2026-09-16
+
+### Added
+- **Plugin error reporting API** — Plugins can now report step-level validation
+  errors back to the canvas via the new `onReportErrors(errors)` callback that
+  is passed to every registered plugin module, and via the public
+  `builder.setStepErrors(stepId, errors)` / `builder.clearStepErrors(stepId)`
+  methods on the factory API.  Error messages are displayed in a hover tooltip
+  on the red ⚠ badge so users can immediately see what is wrong with a step.
+- **`Canvas.setErrorState(ids, messages)`** — new Canvas method that accepts
+  both the error-ID set and a `{[stepId]: string[]}` messages map, enabling
+  rich tooltips for every step node type (plugin and sidebar).
+
+### Changed
+- **Plugin step border** — `.wfb-node--plugin` border changed from `dashed`
+  to `solid`.  Plugin-managed steps are already distinguished by the blue gear
+  badge; a dashed border added visual noise without communicating useful
+  information.
+- **Validator: `template_id` is now sufficient for email / SMS / WhatsApp** —
+  when a `template_id` is stored in the step config the validator no longer
+  requires a separate `subject` (email) or `message` (sms / whatsapp) because
+  those values live inside the referenced template.
+
+### Deprecated
+- `Canvas.setErrorIds(ids)` — superseded by `Canvas.setErrorState(ids, messages)`.
+  `setErrorIds` still works but will be removed in a future major version.
+
 ## [0.2.6] — 2026-09-16
 
 ### Fixed

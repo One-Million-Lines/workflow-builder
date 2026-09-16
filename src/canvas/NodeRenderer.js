@@ -24,7 +24,7 @@ export function renderTriggerNode(trigger, triggerDef, { selected, t = defaultT 
   return node;
 }
 
-export function renderStepNode(step, stepDef, { selected, hasError, hasPlugin, t = defaultT }) {
+export function renderStepNode(step, stepDef, { selected, hasError, errorMessages = [], hasPlugin, t = defaultT }) {
   const node = document.createElement("div");
   const cls = ["wfb-node", `wfb-node--${step.type}`];
   if (selected) cls.push("wfb-node--selected");
@@ -46,6 +46,10 @@ export function renderStepNode(step, stepDef, { selected, hasError, hasPlugin, t
     : "";
   const statusLabel = isInactive ? t("status_inactive") : t("status_active");
   const toggleLabel = isInactive ? t("set_active") : t("set_inactive");
+
+  const errorTooltip  = errorMessages.length > 0 ? errorMessages.join("\n") : t("config_incomplete");
+  const errorAttr     = hasError ? ` data-wfb-errors="${errorTooltip.replace(/"/g, "&quot;")}"` : "";
+
   node.innerHTML = `
     <div class="wfb-node__row">
       <span class="wfb-node__status" title="${statusLabel}"></span>
@@ -62,7 +66,7 @@ export function renderStepNode(step, stepDef, { selected, hasError, hasPlugin, t
         <button class="wfb-iconbtn" data-act="delete" title="${t("delete")}" type="button">${icon("trash", { size: 14 })}</button>
       </div>
     </div>
-    ${hasError ? `<div class="wfb-node__error-flag" title="${t("config_incomplete")}">${icon("alert", { size: 12 })}</div>` : ""}
+    ${hasError ? `<div class="wfb-node__error-flag" title="${escapeHtml(errorTooltip)}"${errorAttr}>${icon("alert", { size: 12 })}</div>` : ""}
     ${hasPlugin ? `<div class="wfb-node__plugin-badge" title="Managed by plugin">${icon("link", { size: 10 })}</div>` : ""}
   `;
   return node;

@@ -214,7 +214,9 @@
 .wfb-node--disabled { opacity: 0.55; filter: grayscale(0.3); }
 .wfb-node--error { border-color: var(--wfb-danger); }
 .wfb-node--trigger { background: #eef6ff; border-color: #b8dafc; }
-.wfb-node--plugin { border-style: dashed; }
+/* Plugin steps use a solid border (not dashed) — same as regular steps. */
+/* The blue gear badge in the top-left corner already signals plugin management. */
+.wfb-node--plugin { border-style: solid; }
 
 /* ── Status toggle (Active / Inactive) ── */
 .wfb-status-toggle {
@@ -286,7 +288,33 @@
   background: var(--wfb-danger); color: white;
   border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
+  cursor: default;
 }
+/* Error tooltip — shown on hover via the [data-wfb-errors] attribute */
+.wfb-node__error-flag::after {
+  content: attr(data-wfb-errors);
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: #1f2937;
+  color: white;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: pre-line;
+  text-align: left;
+  min-width: 160px;
+  max-width: 260px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 20;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+.wfb-node__error-flag:hover::after { opacity: 1; }
 .wfb-node__plugin-badge {
   position: absolute; top: -6px; left: -6px;
   width: 16px; height: 16px;
