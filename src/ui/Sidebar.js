@@ -1,6 +1,10 @@
 import { icon } from "./Icon.js";
 import { defaultT } from "../i18n/index.js";
 
+const _raf = typeof requestAnimationFrame === "function"
+  ? requestAnimationFrame
+  : (fn) => { fn(); return 0; };
+
 /**
  * A simple right-side sliding sidebar.
  *
@@ -41,6 +45,11 @@ export class Sidebar {
     this.widenBtn   = this.el.querySelector(".wfb-sidebar__widen");
     this.widenBtn.addEventListener("click", () => this.toggleWide());
     this.el.querySelector(".wfb-sidebar__close").addEventListener("click", () => this.close());
+    this.el.addEventListener("transitionend", (e) => {
+      if (e.propertyName === "width" || e.propertyName === "transform") {
+        this._emitLayout();
+      }
+    });
   }
 
   mount(parent) { parent.appendChild(this.el); }
@@ -49,6 +58,8 @@ export class Sidebar {
     const next = typeof force === "boolean" ? force : !this.el.classList.contains("wfb-sidebar--wide");
     this.el.classList.toggle("wfb-sidebar--wide", next);
     this.widenBtn.title = next ? this._t("sidebar_shrink") : this._t("sidebar_expand");
+    this._emitLayout();
+    _raf(() => this._emitLayout());
   }
 
   open({ title, content, extras, status, onCommit, onClose }) {
@@ -80,6 +91,8 @@ export class Sidebar {
     this._onCommit = onCommit;
     this._onClose = onClose;
     this.el.classList.add("wfb-sidebar--open");
+    this._emitLayout();
+    _raf(() => this._emitLayout());
   }
 
   commit() {
@@ -93,11 +106,21 @@ export class Sidebar {
   close() {
     if (!this.el.classList.contains("wfb-sidebar--open")) return;
     this.el.classList.remove("wfb-sidebar--open");
+    this._emitLayout();
     this._onCommit = null;
     if (this._onClose) {
       const callback = this._onClose;
       this._onClose = null;
       callback();
     }
+  }
+
+  _emitLayout() {
+    const open = this.el.classList.contains("wfb-sidebar--open");
+    const width = open ? this.el.getBoundingClientRect().width : 0;
+    this.el.dispatchEvent(new CustomEvent("wfb:layout", {
+      detail: { open, width },
+      bubbles: false,
+    }));
   }
 }

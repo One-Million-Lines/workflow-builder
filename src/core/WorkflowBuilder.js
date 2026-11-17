@@ -13,7 +13,7 @@ import { defaultDefinitions } from "../definitions/index.js";
 import { createI18n } from "../i18n/index.js";
 
 export class WorkflowBuilder extends EventEmitter {
-  constructor({ container, workflow, registries, extensions, dataProvider, modules, onChange, onSave, locale, theme }) {
+  constructor({ container, workflow, registries, extensions, dataProvider, modules, onChange, onSave, locale, theme, triggerActions }) {
     super();
     this._containerSel = container;
     this._initialWorkflow = workflow || null;
@@ -22,6 +22,7 @@ export class WorkflowBuilder extends EventEmitter {
     this._dataProvider = dataProvider || createDefaultDataProvider();
     this._modules = { ...(modules || {}) };
     this._theme = theme || null;
+    this._triggerActions = triggerActions && typeof triggerActions === "object" ? triggerActions : {};
     this._t = createI18n(locale || "en");
     if (onChange) this.on("workflow:change", onChange);
     if (onSave) this.on("workflow:save", onSave);
@@ -139,6 +140,9 @@ export class WorkflowBuilder extends EventEmitter {
     this._root.appendChild(this._canvas.el);
     this._addMenu.mount(this._root);
     this._sidebar.mount(this._root);
+    this._onSidebarLayout = (e) => this._syncSidebarLayout(e.detail);
+    this._sidebar.el.addEventListener("wfb:layout", this._onSidebarLayout);
+    this._syncSidebarLayout({ open: false, width: 0 });
     this._container.appendChild(this._root);
 
     // Built-in module: email template builder
@@ -161,6 +165,10 @@ export class WorkflowBuilder extends EventEmitter {
   unmount() {
     this._mountGeneration = (this._mountGeneration || 0) + 1;
     this._canvas?.cancel();
+    if (this._sidebar?.el && this._onSidebarLayout) {
+      this._sidebar.el.removeEventListener("wfb:layout", this._onSidebarLayout);
+    }
+    this._onSidebarLayout = null;
     this._root?.remove();
   }
 
@@ -224,9 +232,19 @@ export class WorkflowBuilder extends EventEmitter {
   // ---------- Internal ----------
   _emitChange() { this.emit("workflow:change", this.getWorkflow()); }
 
+  _syncSidebarLayout(detail = {}) {
+    if (!this._root || !this._sidebar?.el) return;
+    const open = !!detail.open;
+    const measuredWidth = this._sidebar.el.getBoundingClientRect().width;
+    const width = open ? Math.max(0, detail.width || measuredWidth || 0) : 0;
+    this._root.classList.toggle("wfb-root--sidebar-open", open);
+    this._root.style.setProperty("--wfb-active-sidebar-width", `${Math.round(width)}px`);
+  }
+
   _formCtx() {
     return {
       dataProvider: this._dataProvider,
+      actions: this._triggerActions,
       openModule: (name, props) => {
         const m = this._modules[name];
         if (!m) { console.warn("Module not registered:", name); return; }

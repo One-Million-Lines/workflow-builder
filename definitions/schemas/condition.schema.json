@@ -105,7 +105,12 @@
     },
     {
       "name": "workflow_ids", "label": "Workflow IDs (comma-separated)", "type": "text",
-      "visible_if": { "field": "what_workflow", "equals": "other" }
+      "visible_if": {
+        "all": [
+          { "field": "condition_type", "equals": "workflow_status" },
+          { "field": "what_workflow", "equals": "other" }
+        ]
+      }
     },
     {
       "name": "workflow_is", "label": "User status", "type": "select", "default": "isnow",

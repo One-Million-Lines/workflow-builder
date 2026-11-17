@@ -4,7 +4,34 @@ All notable changes to this package are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/) format.
 
-## [0.3.0] — 2026-09-16
+## [0.4.0] — 2026-11-17
+
+### Added
+- **`triggerActions`** — host applications can register async action callbacks (e.g. count users) that are invoked directly from trigger form fields via the new `action_button` schema field type.
+- **`combobox` field type** — live-search dropdown backed by `options_source` (pre-loaded) with optional `search_source` for debounced API search; stores value + label companion; shows selected badge below input.
+- **`cron` field type** — friendly recurring-schedule picker (Daily / Weekly / Monthly + time) that emits a standard cron expression string.
+- **`visible_if.all` / `visible_if.any`** — compound visibility rules for form fields.
+- **Nested `depends_on` resolution** — form fields inside repeater sub-items can now resolve `depends_on` values from ancestor item state; parent-dependent selects reload automatically when ancestor fields change.
+- **Empty branch placeholder** — condition branches with no steps show a symbolic "Do nothing" pill.
+- **Canvas sidebar offset** — canvas right-padding adjusts dynamically when the sidebar is open so nodes stay fully visible.
+- **HTTP request URL validator** — rejects non-URL inputs; supports `{{…}}` placeholders, plain domains, and `localhost`.
+- **`dev:lib` script** — watch-rebuild for local development (`vite build --watch`).
+
+### Changed
+- `trigger_user_segment`: segment field upgraded to `combobox` with live suggest search, companion title storage, and a "Count users" action button (disabled until a segment is selected).
+- `trigger_user_events` / `trigger_api_request`: exit-event conditions use proper `select` dropdowns with `options_source: "events"` and `event_fields` instead of plain text inputs.
+- `trigger_api_request`: removed unused `endpoint` text field; updated info copy.
+- `trigger_back_in_stock` / `trigger_price_change`: added "Count users" action buttons.
+- Form compacted: reduced gap/padding in `.wfb-form`, `.wfb-field`, and repeater items.
+- Action buttons (`action_button`) now use a solid dark style and display result below.
+- `WorkflowBuilder` Save no longer closes the full-screen modal; it persists and shows a toast.
+
+### Fixed
+- `commitAndGetWorkflow` test updated to remove dependency on the deleted `endpoint` field.
+- `vite.lib.config.js`: replaced `__dirname` with `import.meta.dirname`-compatible pattern to suppress Vite 8.x warning.
+- Updated dev dependencies: eslint 10.6 → 10.15, jsdom 29.1 → 31.0.1, vite 8.1 → 8.3.8; resolved 9 vulnerabilities (3 moderate, 6 high) in older Vite.
+
+
 
 ### Added
 - **Plugin error reporting API** — Plugins can now report step-level validation

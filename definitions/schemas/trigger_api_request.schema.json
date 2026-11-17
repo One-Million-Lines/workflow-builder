@@ -3,15 +3,9 @@
   "title": "API request",
   "fields": [
     {
-      "name": "_info_endpoint",
+      "name": "_info",
       "type": "info",
-      "text": "Trigger this workflow with an API request. The endpoint name is your reference for invoking it."
-    },
-    { "name": "endpoint", "label": "Endpoint name", "type": "text", "required": true, "placeholder": "my_workflow_endpoint" },
-    {
-      "name": "_info_example",
-      "type": "info",
-      "text": "Example payload:\n{\n  \"campaign_id\": \"<workflow_id>\",\n  \"recipients\": [{ \"email\": \"user@example.com\" }]\n}"
+      "text": "This workflow is triggered programmatically via the API. Configure exit events below to stop the workflow when a user performs a specific action."
     },
     { "name": "_divider_exit", "type": "divider", "label": "Exit triggers" },
     {
@@ -21,11 +15,31 @@
       "max_items": 3,
       "add_label": "Add exit event",
       "item_fields": [
-        { "name": "event", "label": "Event name", "type": "text", "required": true },
-        { "name": "conditions", "label": "Conditions", "type": "repeater",
+        {
+          "name": "event", "label": "Event name", "type": "select", "required": true,
+          "options_source": "events", "placeholder": "Choose event"
+        },
+        {
+          "name": "conditions",
+          "label": "Conditions",
+          "type": "repeater",
+          "add_label": "Add condition",
           "item_fields": [
-            { "name": "field", "label": "Field", "type": "text", "required": true },
-            { "name": "operator", "label": "Operator", "type": "text", "default": "equals" },
+            {
+              "name": "field", "label": "Field", "type": "select", "required": true,
+              "options_source": "event_fields", "depends_on": ["event"],
+              "placeholder": "Choose field"
+            },
+            {
+              "name": "operator", "label": "Operator", "type": "select", "default": "equals",
+              "options": [
+                { "label": "equals", "value": "equals" },
+                { "label": "not equals", "value": "not_equals" },
+                { "label": "contains", "value": "contains" },
+                { "label": "greater than", "value": "greater_than" },
+                { "label": "less than", "value": "less_than" }
+              ]
+            },
             { "name": "value", "label": "Value", "type": "text" }
           ]
         }

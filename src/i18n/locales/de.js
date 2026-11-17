@@ -55,6 +55,7 @@ export default {
   // ── Condition branch labels ────────────────────────────────────────────
   branch_yes: "JA",
   branch_no: "NEIN",
+  branch_do_nothing: "Nichts tun",
 
   // ── Step summaries ─────────────────────────────────────────────────────
   summary_choose_action: "Aktion auswählen",

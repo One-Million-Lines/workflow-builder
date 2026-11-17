@@ -5,17 +5,27 @@
     {
       "name": "segment_id",
       "label": "Segment",
-      "type": "select",
+      "type": "combobox",
       "required": true,
       "options_source": "segments",
-      "placeholder": "Choose segment"
+      "search_source": "segments_suggest",
+      "placeholder": "Search segments…",
+      "companion_name": "segment_title"
+    },
+    { "name": "segment_title", "type": "hidden" },
+    {
+      "name": "_count_btn",
+      "type": "action_button",
+      "label": "Count users",
+      "action": "count_segment",
+      "requires_field": "segment_id"
     },
     { "name": "repeat_flag", "label": "Trigger campaign repetitively", "type": "toggle", "default": false },
     {
       "name": "recurring",
-      "label": "Recurring schedule (cron expression)",
-      "type": "text",
-      "placeholder": "0 9 * * *",
+      "label": "Recurring schedule",
+      "type": "cron",
+      "default": "0 9 * * *",
       "visible_if": { "field": "repeat_flag", "equals": true }
     }
   ]

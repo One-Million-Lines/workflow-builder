@@ -19,12 +19,13 @@ import { WorkflowBuilder } from "./core/WorkflowBuilder.js";
  * aliases `target` (for `container`) and `initialValue` (for `workflow`).
  */
 export function createWorkflowBuilder(options = {}) {
-  const { target, container, initialValue, workflow, locale, theme, ...rest } = options;
+  const { target, container, initialValue, workflow, locale, theme, triggerActions, ...rest } = options;
   const instance = new WorkflowBuilder({
     container: target ?? container,
     workflow: initialValue ?? workflow ?? null,
     locale,
     theme,
+    triggerActions,
     ...rest,
   });
 

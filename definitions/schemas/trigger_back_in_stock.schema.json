@@ -13,6 +13,12 @@
       "label": "Only include products with these filters",
       "type": "json",
       "placeholder": "{ \"category\": \"shoes\" }"
+    },
+    {
+      "name": "_count_btn",
+      "type": "action_button",
+      "label": "Count users",
+      "action": "count_back_in_stock"
     }
   ]
 }

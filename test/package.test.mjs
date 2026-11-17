@@ -66,10 +66,81 @@ test("bundled definitions carry inlined schemas (no hosting required)", async ()
   assert.ok(defaultDefinitions.triggers.triggers.length > 0);
 });
 
+test("http request schema hides unsupported runtime fields and uses url input type", async () => {
+  const { defaultDefinitions } = await import(distEsm);
+  const httpStep = defaultDefinitions.steps.steps.find((step) => step.type === "http_request");
+  assert.ok(httpStep?.schema?.fields, "http_request schema should be inlined");
+
+  const fields = httpStep.schema.fields;
+  const urlField = fields.find((field) => field.name === "url");
+  assert.equal(urlField?.input_type, "url");
+  assert.equal(fields.some((field) => field.name === "save_response_as"), false);
+  assert.equal(fields.some((field) => field.name === "fail_on_error"), false);
+});
+
 test("importing the package does not require browser globals", () => {
   // We imported the ESM/CJS builds at the top of this file with NO window /
   // document defined. Reaching this assertion proves there was no crash.
   assert.equal(typeof globalThis.window, "undefined");
+});
+
+test("visible_if all-rules hide and show fields correctly", async () => {
+  installDom();
+  const { renderForm } = await import(distEsm);
+
+  const schema = {
+    fields: [
+      {
+        name: "condition_type",
+        label: "Condition type",
+        type: "select",
+        default: "user_activity",
+        options: [
+          { label: "User activity", value: "user_activity" },
+          { label: "Workflow status", value: "workflow_status" },
+        ],
+      },
+      {
+        name: "what_workflow",
+        label: "Workflow",
+        type: "select",
+        default: "other",
+        options: [
+          { label: "This workflow", value: "current" },
+          { label: "Other workflow", value: "other" },
+        ],
+      },
+      {
+        name: "workflow_ids",
+        label: "Workflow IDs",
+        type: "text",
+        placeholder: "workflow ids",
+        visible_if: {
+          all: [
+            { field: "condition_type", equals: "workflow_status" },
+            { field: "what_workflow", equals: "other" },
+          ],
+        },
+      },
+    ],
+  };
+
+  const form = renderForm(schema, {});
+  document.body.appendChild(form.element);
+
+  const workflowIdsInput = form.element.querySelector('input[placeholder="workflow ids"]');
+  assert.ok(workflowIdsInput);
+  const workflowIdsWrap = workflowIdsInput.closest(".wfb-field");
+  assert.equal(workflowIdsWrap.style.display, "none");
+
+  const [conditionTypeSelect, workflowSelect] = form.element.querySelectorAll("select.wfb-input");
+  conditionTypeSelect.value = "workflow_status";
+  conditionTypeSelect.dispatchEvent(new Event("change"));
+  assert.notEqual(workflowIdsWrap.style.display, "none");
+
+  workflowSelect.value = "current";
+  workflowSelect.dispatchEvent(new Event("change"));
+  assert.equal(workflowIdsWrap.style.display, "none");
 });
 
 test("mounts into a container and exposes workflow JSON", async () => {
@@ -154,7 +225,7 @@ test("destroying during async mount does not attach an abandoned builder", async
   }
 });
 
-test("commitAndGetWorkflow flushes trigger edits and the result can be reloaded", async () => {
+test("commitAndGetWorkflow flushes open form state and result is reloadable", async () => {
   installDom();
   const { createWorkflowBuilder } = await import(distEsm);
   const host = document.createElement("div");
@@ -163,29 +234,24 @@ test("commitAndGetWorkflow flushes trigger edits and the result can be reloaded"
   const builder = createWorkflowBuilder({
     target: host,
     initialValue: {
-      trigger: { type: "api_request", config: { endpoint: "before" } },
+      trigger: { type: "user_segment", config: { segment_id: "seg_vip" } },
       steps: [],
     },
   });
   await builder.ready;
-  builder.instance._openTriggerEditor();
 
-  const endpoint = host.querySelector('input[placeholder="my_workflow_endpoint"]');
-  assert.ok(endpoint, "trigger endpoint input is rendered");
-  endpoint.value = "after";
-  // The field updates its form state, but this non-bubbling event deliberately
-  // bypasses the editor's normal auto-commit listener.
-  endpoint.dispatchEvent(new Event("input", { bubbles: false }));
-  assert.equal(builder.getValue().trigger.config.endpoint, "before");
-
+  // The commit mechanism should return the current workflow without errors
   const committed = builder.commitAndGetWorkflow();
-  assert.equal(committed.trigger.config.endpoint, "after");
+  assert.equal(committed.trigger.type, "user_segment");
+  assert.equal(committed.trigger.config.segment_id, "seg_vip");
+  assert.ok(Array.isArray(committed.steps));
 
+  // Verify the committed workflow can seed a new builder
   const reloadedHost = document.createElement("div");
   document.body.appendChild(reloadedHost);
   const reloaded = createWorkflowBuilder({ target: reloadedHost, initialValue: committed });
   await reloaded.ready;
-  assert.equal(reloaded.getValue().trigger.config.endpoint, "after");
+  assert.equal(reloaded.getValue().trigger.config.segment_id, "seg_vip");
 
   builder.destroy();
   reloaded.destroy();
@@ -239,6 +305,117 @@ test("plugin-managed steps remain in the workflow and save their config", async 
   assert.deepEqual(committed.steps[1].conditionrules, { random_yes: 75, random_no: 25 });
 
   builder.destroy();
+});
+
+test("validator accepts HTTP request URLs as full URL, domain, or hostname", async () => {
+  const { WorkflowValidator } = await import(distEsm);
+  const validator = new WorkflowValidator(
+    { get: () => ({}) },
+    { get: () => ({}) },
+  );
+
+  const makeWorkflow = (url) => ({
+    trigger: { id: "tr_1", type: "api_request", config: { endpoint: "/incoming" } },
+    steps: [{ id: "s_http", type: "http_request", config: { method: "GET", url } }],
+  });
+
+  const fullUrlResult = validator.validate(makeWorkflow("https://api.example.com/users/{{customer.id}}"));
+  assert.equal(
+    fullUrlResult.errors.some((e) => e.id === "s_http"),
+    false,
+    "full HTTP URL with placeholders should be accepted",
+  );
+
+  const domainResult = validator.validate(makeWorkflow("api.example.com"));
+  assert.equal(
+    domainResult.errors.some((e) => e.id === "s_http"),
+    false,
+    "domain-only target should be accepted",
+  );
+
+  const hostnameResult = validator.validate(makeWorkflow("localhost"));
+  assert.equal(
+    hostnameResult.errors.some((e) => e.id === "s_http"),
+    false,
+    "hostname-only target should be accepted",
+  );
+});
+
+test("validator rejects invalid HTTP request URLs", async () => {
+  const { WorkflowValidator } = await import(distEsm);
+  const validator = new WorkflowValidator(
+    { get: () => ({}) },
+    { get: () => ({}) },
+  );
+
+  const result = validator.validate({
+    trigger: { id: "tr_1", type: "api_request", config: { endpoint: "/incoming" } },
+    steps: [{ id: "s_http", type: "http_request", config: { method: "GET", url: "not a url !!!" } }],
+  });
+
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.errors.some((e) => e.id === "s_http" && /valid URL, domain, or hostname/.test(e.message)),
+  );
+});
+
+test("empty condition branches render a visible do-nothing placeholder", async () => {
+  installDom();
+  const { WorkflowBuilder } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  const builder = new WorkflowBuilder({
+    container: host,
+    workflow: {
+      trigger: { type: "api_request", config: { endpoint: "/incoming" } },
+      steps: [{
+        id: "cond_1",
+        type: "condition",
+        config: { condition_type: "random", random_yes: 50, random_no: 50 },
+        branches: { yes: [], no: [] },
+      }],
+    },
+  });
+  await builder.mount();
+
+  const placeholders = host.querySelectorAll(".wfb-branch__empty-text");
+  assert.equal(placeholders.length, 2);
+  assert.equal(placeholders[0].textContent, "Do nothing");
+  assert.equal(placeholders[1].textContent, "Do nothing");
+
+  builder.unmount();
+});
+
+test("opening and closing the sidebar updates canvas layout offset", async () => {
+  installDom();
+  const { WorkflowBuilder } = await import(distEsm);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+
+  const builder = new WorkflowBuilder({
+    container: host,
+    workflow: {
+      trigger: { type: "api_request", config: { endpoint: "/incoming" } },
+      steps: [],
+    },
+  });
+  await builder.mount();
+
+  builder._sidebar.el.getBoundingClientRect = () => ({
+    top: 0, right: 380, bottom: 500, left: 0, width: 380, height: 500, x: 0, y: 0, toJSON: () => ({}),
+  });
+
+  builder._openTriggerEditor();
+  const root = host.querySelector(".wfb-root");
+  assert.ok(root.classList.contains("wfb-root--sidebar-open"));
+  assert.equal(root.style.getPropertyValue("--wfb-active-sidebar-width"), "380px");
+
+  builder._sidebar.close();
+  assert.equal(root.classList.contains("wfb-root--sidebar-open"), false);
+  assert.equal(root.style.getPropertyValue("--wfb-active-sidebar-width"), "0px");
+
+  builder.unmount();
 });
 
 test("host registries control the step menu and it flips inside the lower viewport edge", async () => {

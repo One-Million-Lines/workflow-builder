@@ -20,6 +20,8 @@
   --wfb-shadow-lg: 0 4px 12px rgba(16, 24, 40, 0.1);
   /* Spacing tokens — overridable via theme dict */
   --wfb-canvas-padding: 32px 16px 80px;
+  --wfb-canvas-padding-right-base: 16px;
+  --wfb-active-sidebar-width: 0px;
   --wfb-node-padding: 12px 14px;
   --wfb-sidebar-width: 380px;
   --wfb-sidebar-padding: 16px;
@@ -180,8 +182,12 @@
 .wfb-canvas__scroll {
   min-height: 100%;
   padding: var(--wfb-canvas-padding);
+  padding-right: var(--wfb-canvas-padding-right-base);
   display: flex;
   justify-content: center;
+}
+.wfb-root--sidebar-open .wfb-canvas__scroll {
+  padding-right: calc(var(--wfb-canvas-padding-right-base) + var(--wfb-active-sidebar-width));
 }
 .wfb-flow {
   display: flex;
@@ -382,6 +388,23 @@
 }
 .wfb-branch__label--yes { background: var(--wfb-success); }
 .wfb-branch__label--no  { background: var(--wfb-danger); }
+.wfb-branch__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 5px 10px;
+  border: 1px dashed #c8cdda;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--wfb-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+.wfb-branch__empty-icon {
+  display: inline-flex;
+  color: #9ca3af;
+}
 
 /* ---------- Add Step Menu ---------- */
 .wfb-add-menu {
@@ -458,11 +481,12 @@
    .wfb-root .wfb-btn scoped block above (higher specificity wins)  */
 
 /* ---------- Form ---------- */
-.wfb-form { display: flex; flex-direction: column; gap: 10px; }
-.wfb-field { display: flex; flex-direction: column; gap: 6px; }
+.wfb-form { display: flex; flex-direction: column; gap: 8px; }
+.wfb-field { display: flex; flex-direction: column; gap: 2px; }
 .wfb-field__label { font-size: 12px; font-weight: 600; color: var(--wfb-text); }
 .wfb-field__required { color: var(--wfb-danger); }
 .wfb-field__error { font-size: 11px; color: var(--wfb-danger); min-height: 1em; }
+.wfb-field__error:empty { min-height: 0; display: none; height: 0; }
 /* .wfb-input — defined in the .wfb-root .wfb-input scoped block above */
 /* Modifier variants that extend the base .wfb-root .wfb-input: */
 .wfb-root .wfb-input--toggle {
@@ -518,22 +542,22 @@
 .wfb-repeater {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   border: 1px dashed var(--wfb-node-border);
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
   background: #fafbfc;
 }
 .wfb-repeater__item {
   background: white;
   border: 1px solid var(--wfb-node-border);
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
 }
 .wfb-repeater__head {
   display: flex; align-items: center; justify-content: space-between;
   font-size: 11px; color: var(--wfb-muted);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .wfb-repeater__add {
   align-self: flex-start;
@@ -675,3 +699,83 @@
   display: grid; grid-template-columns: 1fr 1fr auto;
   gap: 6px; margin-bottom: 6px;
 }
+
+/* ---------- Combobox (live-search backed) ---------- */
+.wfb-combobox { position: relative; }
+.wfb-combobox__dropdown {
+  position: absolute;
+  top: calc(100% + 2px); left: 0; right: 0;
+  background: white;
+  border: 1px solid var(--wfb-node-border);
+  border-radius: 6px;
+  box-shadow: var(--wfb-shadow-lg);
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.wfb-combobox__item {
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--wfb-text);
+}
+.wfb-combobox__item:hover { background: #f0f4ff; }
+.wfb-combobox__item--selected { background: #eef4ff; color: var(--wfb-primary); font-weight: 600; }
+.wfb-combobox__selected {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.wfb-combobox__sel-icon { color: var(--wfb-success); font-size: 12px; }
+.wfb-combobox__sel-text { font-weight: 600; color: var(--wfb-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wfb-combobox__sel-id { color: var(--wfb-muted); flex-shrink: 0; }
+
+/* ---------- Cron picker ---------- */
+.wfb-cron { display: flex; flex-direction: column; gap: 6px; }
+.wfb-cron__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.wfb-cron__label { font-size: 12px; color: var(--wfb-muted); white-space: nowrap; }
+.wfb-cron__sel { width: auto !important; min-width: 0; }
+.wfb-cron__preview {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  background: #f1f5f9;
+  border: 1px solid var(--wfb-node-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--wfb-muted);
+  align-self: flex-start;
+}
+
+/* ---------- Action button ---------- */
+.wfb-root .wfb-btn--action {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #fff;
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+}
+.wfb-root .wfb-btn--action:hover { background: #374151; border-color: #374151; }
+.wfb-root .wfb-btn--action:disabled { opacity: 0.6; cursor: not-allowed; }
+.wfb-action-btn-result {
+  display: block;
+  min-height: 1.2em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wfb-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+.wfb-action-btn-result--ok { color: var(--wfb-success); }
+.wfb-action-btn-result--err { color: var(--wfb-danger); }

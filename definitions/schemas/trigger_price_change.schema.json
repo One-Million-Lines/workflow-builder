@@ -10,21 +10,16 @@
     { "name": "activity_days", "label": "Users who interacted in the last X days", "type": "number", "default": 30, "min": 1 },
     { "name": "price_diff", "label": "Price difference % (+ increase, - decrease)", "type": "number", "default": -10 },
     {
-      "name": "direction",
-      "label": "Direction",
-      "type": "select",
-      "default": "any",
-      "options": [
-        { "label": "Any change", "value": "any" },
-        { "label": "Decrease only", "value": "decrease" },
-        { "label": "Increase only", "value": "increase" }
-      ]
-    },
-    {
       "name": "product_filters",
       "label": "Only include products with these filters",
       "type": "json",
       "placeholder": "{ \"category\": \"shoes\" }"
+    },
+    {
+      "name": "_count_btn",
+      "type": "action_button",
+      "label": "Count users",
+      "action": "count_price_change"
     }
   ]
 }

@@ -207,7 +207,12 @@ export class Canvas {
           labelEl.textContent = this._t(which === "yes" ? "branch_yes" : "branch_no");
           col.appendChild(labelEl);
           col.appendChild(this._makeConnector(step.id, which));
-          this._renderStepList(col, step.branches?.[which] || []);
+          const branchSteps = step.branches?.[which] || [];
+          if (branchSteps.length === 0) {
+            col.appendChild(this._makeEmptyBranchPlaceholder());
+          } else {
+            this._renderStepList(col, branchSteps);
+          }
           branchWrap.appendChild(col);
         }
         container.appendChild(branchWrap);
@@ -238,6 +243,16 @@ export class Canvas {
       <div class="wfb-connector__line"></div>
     `;
     return wrap;
+  }
+
+  _makeEmptyBranchPlaceholder() {
+    const empty = document.createElement("div");
+    empty.className = "wfb-branch__empty";
+    empty.innerHTML = `
+      <span class="wfb-branch__empty-icon">${icon("exit", { size: 12 })}</span>
+      <span class="wfb-branch__empty-text">${this._t("branch_do_nothing")}</span>
+    `;
+    return empty;
   }
 
   /** Single delegated click handler — routes to the correct event. */

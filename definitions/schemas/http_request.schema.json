@@ -18,6 +18,7 @@
       "name": "url",
       "label": "URL",
       "type": "text",
+      "input_type": "url",
       "required": true,
       "placeholder": "https://api.example.com/users/{{customer.id}}"
     },
@@ -59,18 +60,6 @@
       "type": "textarea",
       "rows": 6,
       "visible_if": { "field": "body_mode", "equals": "raw" }
-    },
-    {
-      "name": "save_response_as",
-      "label": "Save response as variable",
-      "type": "text",
-      "placeholder": "http_response"
-    },
-    {
-      "name": "fail_on_error",
-      "label": "Stop workflow if request fails",
-      "type": "toggle",
-      "default": false
     }
   ]
 }

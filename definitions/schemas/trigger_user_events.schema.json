@@ -79,9 +79,19 @@
           "item_fields": [
             {
               "name": "field", "label": "Field", "type": "select", "required": true,
-              "options_source": "event_fields", "depends_on": ["event"]
+              "options_source": "event_fields", "depends_on": ["event"],
+              "placeholder": "Choose field"
             },
-            { "name": "operator", "label": "Operator", "type": "text", "default": "equals" },
+            {
+              "name": "operator", "label": "Operator", "type": "select", "default": "equals",
+              "options": [
+                { "label": "equals", "value": "equals" },
+                { "label": "not equals", "value": "not_equals" },
+                { "label": "contains", "value": "contains" },
+                { "label": "greater than", "value": "greater_than" },
+                { "label": "less than", "value": "less_than" }
+              ]
+            },
             { "name": "value", "label": "Value", "type": "text" }
           ]
         }

@@ -6,7 +6,8 @@ import { icon } from "../ui/Icon.js";
  *
  * Supported field types:
  *   text, textarea, number, select, toggle, checkbox, radio, hidden,
- *   info, divider, json, repeater, condition_group, email_template, http_kv
+ *   info, divider, json, repeater, condition_group, email_template, http_kv,
+ *   combobox, action_button
  *
  * Field options:
  *   visible_if: { field, equals } | { field, in: [...] }
@@ -68,8 +69,31 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
       if (!field.depends_on || !field.options_source) continue;
       if (changedField !== null && !field.depends_on.includes(changedField)) continue;
       const w = ctxRef.fieldEls.get(field.name);
-      const sel = w?.querySelector("select.wfb-input");
+      const sel = w?.querySelector("select.wfb-input, .wfb-combobox");
       if (sel && typeof sel._wfbReload === "function") sel._wfbReload();
+    }
+    // Also reload selects nested inside repeater sub-forms that depend on the changed field.
+    // These selects carry a data-wfb-depends-on attribute set during rendering.
+    if (changedField !== null) {
+      for (const field of schemaRef.fields) {
+        if (field.type !== "repeater") continue;
+        const w = ctxRef.fieldEls.get(field.name);
+        if (!w) continue;
+        const nested = w.querySelectorAll(`select.wfb-input[data-wfb-depends-on], .wfb-combobox[data-wfb-depends-on]`);
+        for (const sel of nested) {
+          const deps = (sel.dataset.wfbDependsOn || "").split(",");
+          if (deps.includes(changedField) && typeof sel._wfbReload === "function") {
+            sel._wfbReload();
+          }
+        }
+      }
+    }
+    // Update action_button disabled state based on requires_field option.
+    for (const field of schemaRef.fields) {
+      if (field.type !== "action_button" || !field.requires_field) continue;
+      const w = ctxRef.fieldEls.get(field.name);
+      const btn = w?.querySelector("button.wfb-btn--action");
+      if (btn) btn.disabled = !ctxRef.state[field.requires_field];
     }
   }
   rerenderVisibility(schema, ctx, null);
@@ -79,7 +103,7 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
     getValues() {
       const out = {};
       for (const field of schema.fields) {
-        if (field.type === "info" || field.type === "divider") continue;
+        if (field.type === "info" || field.type === "divider" || field.type === "action_button") continue;
         if (!isVisible(field, state)) continue;
         out[field.name] = deepClone(state[field.name]);
       }
@@ -100,6 +124,7 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
     validate() {
       const errors = [];
       for (const field of schema.fields) {
+        if (field.type === "info" || field.type === "divider" || field.type === "action_button") continue;
         const wrap = ctx.fieldEls.get(field.name);
         const errEl = wrap?.querySelector(":scope > .wfb-field__error");
         if (errEl) errEl.textContent = "";
@@ -166,7 +191,7 @@ export function renderForm(schema, initialValues = {}, formCtx = {}) {
 
 function applyDefaults(fields, state) {
   for (const f of fields) {
-    if (f.type === "info" || f.type === "divider") continue;
+    if (f.type === "info" || f.type === "divider" || f.type === "action_button") continue;
     if (state[f.name] === undefined && "default" in f) {
       state[f.name] = deepClone(f.default);
     }
@@ -186,6 +211,13 @@ function applyDefaults(fields, state) {
 
 function isVisible(field, state) {
   if (!field.visible_if) return true;
+  if (Array.isArray(field.visible_if.all)) {
+    return field.visible_if.all.every((rule) => isVisible({ visible_if: rule }, state));
+  }
+  if (Array.isArray(field.visible_if.any)) {
+    return field.visible_if.any.some((rule) => isVisible({ visible_if: rule }, state));
+  }
+
   const { field: depField, equals, in: inList } = field.visible_if;
   const v = state[depField];
   if (Array.isArray(inList)) return inList.includes(v);
@@ -209,6 +241,38 @@ function renderFieldWrap(field, ctx, onChange) {
     d.className = "wfb-divider";
     d.innerHTML = `<span>${escapeHtml(field.label || "")}</span>`;
     wrap.appendChild(d);
+    return wrap;
+  }
+  if (field.type === "action_button") {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "wfb-btn wfb-btn--action";
+    btn.textContent = field.label || "Run";
+    // Disable immediately if the required field is empty
+    if (field.requires_field) btn.disabled = !ctx?.state?.[field.requires_field];
+    const result = document.createElement("div");
+    result.className = "wfb-action-btn-result";
+    btn.addEventListener("click", async () => {
+      const action = ctx?.formCtx?.actions?.[field.action];
+      if (!action) return;
+      btn.disabled = true;
+      result.textContent = "…";
+      result.className = "wfb-action-btn-result";
+      try {
+        const res = await action(deepClone(ctx.state));
+        result.textContent = typeof res === "object" ? JSON.stringify(res) : String(res ?? "");
+        result.className = "wfb-action-btn-result wfb-action-btn-result--ok";
+      } catch {
+        result.textContent = "Error";
+        result.className = "wfb-action-btn-result wfb-action-btn-result--err";
+      } finally {
+        // Re-evaluate disabled state after action completes
+        if (field.requires_field) btn.disabled = !ctx?.state?.[field.requires_field];
+        else btn.disabled = false;
+      }
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(result);
     return wrap;
   }
 
@@ -281,6 +345,10 @@ function renderInput(field, value, onChange, ctx) {
         // Placeholder option while loading
         s.innerHTML = `<option value="">Loading…</option>`;
         s.disabled = true;
+        // Tag for nested-form dependency reload
+        if (Array.isArray(field.depends_on) && field.depends_on.length > 0) {
+          s.dataset.wfbDependsOn = field.depends_on.join(",");
+        }
         s._wfbReload = async () => {
           // Guard: skip if a reload is already in flight (prevents amplification
           // when rerenderVisibility triggers multiple concurrent reloads).
@@ -289,7 +357,10 @@ function renderInput(field, value, onChange, ctx) {
           try {
             const deps = {};
             if (Array.isArray(field.depends_on)) {
-              for (const d of field.depends_on) deps[d] = ctx?.state?.[d];
+              for (const d of field.depends_on) {
+                // Resolve from own state first, then from parent state (nested repeaters)
+                deps[d] = ctx?.state?.[d] ?? ctx?.formCtx?.parentState?.[d];
+              }
             }
             const opts = provider
               ? await provider(field.options_source, { depends: deps })
@@ -401,10 +472,128 @@ function renderInput(field, value, onChange, ctx) {
     case "http_kv": {
       return renderHttpKvField(field, Array.isArray(value) ? value : [], onChange);
     }
+    case "combobox": {
+      // Live-search field: filters pre-loaded options client-side;
+      // calls dataProvider(field.search_source, { depends: { query } }) when available.
+      const wrap = document.createElement("div");
+      wrap.className = "wfb-combobox";
+      if (Array.isArray(field.depends_on) && field.depends_on.length > 0) {
+        wrap.dataset.wfbDependsOn = field.depends_on.join(",");
+      }
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "wfb-input";
+      input.placeholder = field.placeholder || "Search…";
+      input.setAttribute("autocomplete", "off");
+
+      const dropdown = document.createElement("div");
+      dropdown.className = "wfb-combobox__dropdown";
+      dropdown.style.display = "none";
+
+      // Selection badge shown below the input
+      const selDisplay = document.createElement("div");
+      selDisplay.className = "wfb-combobox__selected";
+      selDisplay.style.display = "none";
+
+      let allOptions = [];
+      let selectedValue = value ?? "";
+      // Pre-seed label from companion field if already stored
+      let selectedLabel = (field.companion_name && ctx?.state?.[field.companion_name]) || "";
+      let searchTimer = null;
+
+      const updateSelDisplay = () => {
+        if (selectedValue && selectedLabel) {
+          selDisplay.style.display = "";
+          selDisplay.innerHTML = `<span class="wfb-combobox__sel-icon">✓</span>
+            <span class="wfb-combobox__sel-text">${escapeHtml(selectedLabel)}</span>
+            <span class="wfb-combobox__sel-id">#${escapeHtml(String(selectedValue))}</span>`;
+        } else {
+          selDisplay.style.display = "none";
+        }
+      };
+      updateSelDisplay();
+
+      const renderDropdown = (opts) => {
+        dropdown.innerHTML = "";
+        const limited = opts.slice(0, 15);
+        if (!limited.length) { dropdown.style.display = "none"; return; }
+        for (const opt of limited) {
+          const item = document.createElement("div");
+          item.className = "wfb-combobox__item" + (opt.value === selectedValue ? " wfb-combobox__item--selected" : "");
+          item.textContent = opt.label;
+          item.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            selectedValue = opt.value;
+            selectedLabel = opt.label;
+            input.value = "";
+            input.placeholder = field.placeholder || "Search…";
+            dropdown.style.display = "none";
+            onChange(opt.value);
+            // Store companion label
+            if (field.companion_name && ctx?.state) ctx.state[field.companion_name] = opt.label;
+            updateSelDisplay();
+            // Bubble a change event so parent form's autoCommit fires
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          });
+          dropdown.appendChild(item);
+        }
+        dropdown.style.display = "";
+      };
+
+      const filterLocal = (q) => {
+        const lq = q.toLowerCase().trim();
+        return lq
+          ? allOptions.filter((o) => o.label.toLowerCase().includes(lq) || String(o.value).toLowerCase().includes(lq))
+          : allOptions;
+      };
+
+      const provider = ctx?.formCtx?.dataProvider;
+      wrap._wfbReload = async () => {
+        if (!provider) return;
+        allOptions = (await provider(field.options_source || "segments").catch(() => [])) || [];
+        const found = selectedValue ? allOptions.find((o) => o.value === selectedValue) : null;
+        if (found) {
+          selectedLabel = found.label;
+          if (field.companion_name && ctx?.state) ctx.state[field.companion_name] = found.label;
+          updateSelDisplay();
+        }
+      };
+      Promise.resolve().then(() => wrap._wfbReload());
+
+      input.addEventListener("focus", () => renderDropdown(filterLocal(input.value)));
+      input.addEventListener("input", () => {
+        const q = input.value;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(async () => {
+          if (field.search_source && provider) {
+            try {
+              const live = await provider(field.search_source, { depends: { query: q } });
+              if (live && live.length > 0) { renderDropdown(live); return; }
+            } catch { /* fall through to local */ }
+          }
+          renderDropdown(filterLocal(q));
+        }, 200);
+      });
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          dropdown.style.display = "none";
+          input.value = ""; // always clear so it stays a search field
+        }, 150);
+      });
+
+      wrap.appendChild(input);
+      wrap.appendChild(dropdown);
+      wrap.appendChild(selDisplay);
+      return wrap;
+    }
+    case "cron": {
+      return renderCronField(field, value, onChange);
+    }
     case "text":
     default: {
       const i = document.createElement("input");
-      i.type = "text";
+      i.type = field.input_type || "text";
       i.className = "wfb-input";
       i.value = value ?? "";
       i.placeholder = field.placeholder || "";
@@ -440,7 +629,13 @@ function renderRepeater(field, items, onChange, ctx) {
       card.appendChild(head);
 
       const subSchema = { fields: field.item_fields || [] };
-      const sub = renderForm(subSchema, item, ctx?.formCtx);
+      // Merge own state into parentState so nested repeaters can resolve depends_on fields
+      // that live in ancestor form items (e.g., `event` field in trigger event conditions).
+      const subCtx = {
+        ...(ctx?.formCtx || {}),
+        parentState: { ...(ctx?.formCtx?.parentState || {}), ...ctx.state },
+      };
+      const sub = renderForm(subSchema, item, subCtx);
       const sync = () => {
         currentItems[idx] = sub.getValues();
         onChange([...currentItems]);
@@ -615,5 +810,98 @@ function renderHttpKvField(field, items, onChange) {
     wrap.appendChild(addBtn);
   }
   rerender(items);
+  return wrap;
+}
+
+// ── Cron helpers ────────────────────────────────────────────────────────────
+
+function parseCron(val) {
+  const defaults = { freq: "daily", hour: 9, minute: 0, weekday: 1, monthday: 1 };
+  if (!val || typeof val !== "string") return defaults;
+  const parts = val.trim().split(/\s+/);
+  if (parts.length !== 5) return defaults;
+  const [min, hr, dom, _mon, dow] = parts;
+  const hour = parseInt(hr, 10);
+  const minute = parseInt(min, 10);
+  if (isNaN(hour) || isNaN(minute)) return defaults;
+  if (dom !== "*") return { freq: "monthly", hour, minute, weekday: 1, monthday: Math.max(1, parseInt(dom, 10) || 1) };
+  if (dow !== "*") return { freq: "weekly",  hour, minute, weekday: parseInt(dow, 10) ?? 1, monthday: 1 };
+  return { freq: "daily", hour, minute, weekday: 1, monthday: 1 };
+}
+
+function renderCronField(field, value, onChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "wfb-cron";
+
+  const p = parseCron(value);
+  let freq     = p.freq;
+  let hour     = p.hour;
+  let minute   = [0, 15, 30, 45].includes(p.minute) ? p.minute : 0;
+  let weekday  = p.weekday;
+  let monthday = p.monthday;
+
+  const toCronStr = () => {
+    if (freq === "weekly")  return `${minute} ${hour} * * ${weekday}`;
+    if (freq === "monthly") return `${minute} ${hour} ${monthday} * *`;
+    return `${minute} ${hour} * * *`;
+  };
+
+  const preview = document.createElement("code");
+  preview.className = "wfb-cron__preview";
+
+  const updatePreview = () => {
+    preview.textContent = toCronStr();
+  };
+
+  const renderRow = () => {
+    wrap.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "wfb-cron__row";
+
+    const sel = (opts, cur, onCh) => {
+      const s = document.createElement("select");
+      s.className = "wfb-input wfb-cron__sel";
+      opts.forEach(([v, l]) => {
+        const o = document.createElement("option");
+        o.value = v; o.textContent = l; s.appendChild(o);
+      });
+      s.value = String(cur);
+      s.addEventListener("change", () => { onCh(s.value); updatePreview(); onChange(toCronStr()); });
+      return s;
+    };
+
+    const lbl = (t) => {
+      const sp = document.createElement("span");
+      sp.className = "wfb-cron__label"; sp.textContent = t; return sp;
+    };
+
+    row.appendChild(lbl("Every"));
+    row.appendChild(sel([["daily","day"],["weekly","week"],["monthly","month"]], freq, (v) => {
+      freq = v; renderRow();
+    }));
+
+    if (freq === "weekly") {
+      row.appendChild(lbl("on"));
+      row.appendChild(sel([["1","Mon"],["2","Tue"],["3","Wed"],["4","Thu"],["5","Fri"],["6","Sat"],["0","Sun"]],
+        weekday, (v) => { weekday = Number(v); }));
+    }
+    if (freq === "monthly") {
+      row.appendChild(lbl("on day"));
+      row.appendChild(sel(Array.from({length: 28}, (_, i) => [String(i+1), String(i+1)]),
+        monthday, (v) => { monthday = Number(v); }));
+    }
+
+    row.appendChild(lbl("at"));
+    row.appendChild(sel(Array.from({length: 24}, (_, i) => [String(i), String(i).padStart(2,"0")]),
+      hour, (v) => { hour = Number(v); }));
+    row.appendChild(lbl(":"));
+    row.appendChild(sel([["0","00"],["15","15"],["30","30"],["45","45"]], minute, (v) => { minute = Number(v); }));
+
+    wrap.appendChild(row);
+    wrap.appendChild(preview);
+    updatePreview();
+  };
+
+  renderRow();
   return wrap;
 }

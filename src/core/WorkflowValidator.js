@@ -130,6 +130,9 @@ export class WorkflowValidator {
       case "http_request":
         if (!cfg.method) errors.push("HTTP request requires a method.");
         if (!cfg.url || !String(cfg.url).trim()) errors.push("HTTP request requires a URL.");
+        else if (!this._isValidHttpRequestUrl(cfg.url)) {
+          errors.push("HTTP request URL must be a valid URL, domain, or hostname.");
+        }
         break;
     }
     // step-level extra conditions
@@ -140,6 +143,55 @@ export class WorkflowValidator {
       if (!c.field) errors.push(`Extra condition #${i + 1} requires a field.`);
     });
     return errors;
+  }
+
+  _isValidHttpRequestUrl(rawUrl) {
+    if (rawUrl === null || rawUrl === undefined) return false;
+    const normalized = String(rawUrl).trim();
+    if (!normalized) return false;
+
+    // Support placeholders like {{trigger.id}} by replacing them with
+    // a safe token before parsing.
+    const sanitized = normalized.replace(/\{\{\s*[^{}]+\s*\}\}/g, "placeholder");
+    if (!sanitized || /\s/.test(sanitized)) return false;
+
+    const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(sanitized);
+    const candidate = hasScheme ? sanitized : `https://${sanitized}`;
+
+    let parsed;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      return false;
+    }
+
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    if (!parsed.hostname) return false;
+    return this._isValidHostname(parsed.hostname);
+  }
+
+  _isValidHostname(hostname) {
+    if (hostname === "localhost") return true;
+
+    // IPv4
+    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)) {
+      return hostname.split(".").every((part) => {
+        const n = Number(part);
+        return Number.isInteger(n) && n >= 0 && n <= 255;
+      });
+    }
+
+    if (hostname.length > 253) return false;
+    const labels = hostname.split(".");
+    if (!labels.length) return false;
+
+    return labels.every((label) => (
+      label.length > 0 &&
+      label.length <= 63 &&
+      /^[a-z0-9-]+$/i.test(label) &&
+      !label.startsWith("-") &&
+      !label.endsWith("-")
+    ));
   }
 
   _validateTriggerConfig(trigger) {
